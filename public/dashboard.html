@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="dashboard-page">
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard" class="active">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <section class="dashboard-hero">
+    <div>
+      <div class="eyebrow">Your puzzle studio</div>
+      <h2 id="dash-title">Dashboard</h2>
+      <p>Track each solved pattern, refine your speed, and collect every achievement.</p>
+    </div>
+    <p id="streak" class="streak-chip"></p>
+  </section>
+
+  <div class="summary-cards" id="summary-cards"></div>
+
+  <div class="card">
+    <h3>Badges</h3>
+    <div id="badges-wrap" class="summary-cards" style="margin-bottom:0;"></div>
+  </div>
+
+  <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+    <div>
+      <h3 style="margin-bottom:0.2rem;">Try Ramanujan's birthday trick</h3>
+      <p style="margin:0; font-size:0.85rem;">Build a 4&times;4 magic square from your own date of birth &mdash; every row, column &amp; diagonal sums to the same total.</p>
+    </div>
+    <a class="btn-secondary" style="padding:0.55rem 1.1rem; border-radius:7px; white-space:nowrap;" href="/formula.html#dob-square">Try it &rarr;</a>
+  </div>
+
+  <div class="card">
+    <h3>Attempt history</h3>
+    <div id="history-wrap"></div>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script>
+const ORDERS = [3, 5, 7, 9];
+
+async function boot() {
+  const me = await requireSession();
+  document.getElementById("nav-user").textContent = me.username;
+  document.getElementById("dash-title").textContent = `${me.username}'s dashboard`;
+  document.getElementById("streak").textContent = `Daily streak: ${me.daily_streak || 0}`;
+  if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+  initNav("dashboard");
+
+  const [best, history, badges] = await Promise.all([
+    api.get("/api/attempts/best"),
+    api.get("/api/attempts/history"),
+    api.get("/api/achievements/mine"),
+  ]);
+  renderSummary(best);
+  renderHistory(history);
+  renderBadges(badges);
+}
+
+const BADGE_ICONS = {
+  first_solve: "\u2728",
+  all_orders: "\ud83c\udfb2",
+  ten_solves: "\ud83d\udd22",
+  speed_demon: "\u26a1",
+  no_hints_needed: "\ud83e\udde0",
+  daily_solver: "\ud83d\udcc5",
+  five_solves: "\ud83d\udd25",
+  twenty_five_solves: "\ud83c\udfc6",
+  streak_3: "\ud83d\udd25",
+  streak_7: "\ud83d\udc51",
+  hint_free_five: "\ud83e\udde4",
+  variety_player: "\ud83c\udfae",
+  night_owl: "\ud83e\udd89",
+};
+
+function renderBadges(badges) {
+  const wrap = document.getElementById("badges-wrap");
+  wrap.innerHTML = badges.map((b) => `
+    <div class="badge-card ${b.earned ? 'earned' : ''}" title="${b.earned ? 'Earned ' + formatDate(b.earned_at) : 'Locked'}">
+      <div class="badge-icon">${BADGE_ICONS[b.key] || "\u2b50"}</div>
+      <div class="badge-name">${b.name}</div>
+      <div class="badge-desc">${b.description}</div>
+    </div>
+  `).join("");
+}
+
+function renderSummary(best) {
+  const wrap = document.getElementById("summary-cards");
+  wrap.innerHTML = ORDERS.map((o) => `
+    <div class="summary-card">
+      <div class="order-label">${o} &times; ${o}</div>
+      <div class="best-time">${best[o] !== undefined ? formatTime(best[o]) : '&mdash;'}</div>
+    </div>
+  `).join("");
+}
+
+function renderHistory(history) {
+  const wrap = document.getElementById("history-wrap");
+  if (history.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">No attempts yet. <a href="/game.html">Solve your first square</a> to start building your history.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Order</th><th>Time</th><th>Moves</th><th>Hints</th><th></th><th>Date</th></tr></thead>
+      <tbody>
+        ${history.map((a) => `
+          <tr>
+            <td class="mono">${a.square_order} &times; ${a.square_order}</td>
+            <td class="mono">${formatTime(a.time_taken)}</td>
+            <td class="mono">${a.mode === 'fill' ? a.moves_made + (a.moves_made === 1 ? ' try' : ' tries') : a.moves_made}</td>
+            <td class="mono">${a.mode === 'fill' ? '&mdash;' : (a.hints_used || 0)}</td>
+            <td>${a.is_daily ? '<span class="badge">daily</span>' : a.mode === 'fill' ? '<span class="badge">fill-in</span>' : ''}</td>
+            <td>${formatDate(a.date_attempted)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+boot();
+</script>
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Challenge &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily" class="active">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow" style="text-align:center;">Same puzzle for everyone, resets at midnight UTC</div>
+  <h2 style="text-align:center;" id="daily-title">Today's Challenge</h2>
+  <p id="streak-line" style="text-align:center; color:var(--gold-dim); font-family:var(--font-mono); font-size:0.85rem; margin-top:-0.6rem;"></p>
+
+  <div id="all-complete-note" class="win-banner" style="display:none; max-width:640px; margin:0 auto 1.2rem;"></div>
+
+  <div class="order-picker" id="order-picker"></div>
+
+  <div class="card" id="puzzle-card" style="max-width:640px; margin:0 auto;">
+    <div id="stage-label" style="text-align:center; color:var(--muted); font-size:0.85rem; min-height:1.2em;"></div>
+    <div id="constraint-note" style="text-align:center; color:var(--gold-dim); font-size:0.78rem; font-family:var(--font-mono); min-height:1.1em; margin-bottom:0.3rem;"></div>
+
+    <div id="impossible-note" class="empty-state" style="display:none; padding:1.6rem 1rem;"></div>
+    <div id="already-note" class="win-banner" style="display:none;"></div>
+
+    <div class="board-super-wrap" style="width:min(560px, 92vw); margin: 1rem auto 0;">
+      <div style="display:flex; align-items:stretch;">
+        <div class="board-wrap" style="position:relative; flex:1; min-width:0;">
+          <div id="board" class="grid-board" style="width:100%;"></div>
+          <svg id="hint-arrow" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;"></svg>
+        </div>
+        <div id="row-sum-labels" class="row-sum-labels"></div>
+      </div>
+      <div style="display:flex; align-items:center;">
+        <div id="diag-left-label" class="diag-label" title="Anti-diagonal">&#8601;</div>
+        <div id="col-sum-labels" class="col-sum-labels" style="flex:1;"></div>
+        <div id="diag-right-label" class="diag-label" title="Main diagonal">&#8600;</div>
+      </div>
+    </div>
+
+    <div class="game-hud" id="hud" style="display:none;">
+      <div class="stat"><div class="value" id="hud-time">0:00</div><div class="label">Time</div></div>
+      <div class="stat"><div class="value" id="hud-moves">0</div><div class="label">Moves</div></div>
+      <div class="stat"><div class="value" id="hud-hints">0</div><div class="label">Hints used</div></div>
+      <div class="stat"><div class="value" id="hud-target">&mdash;</div><div class="label">Magic constant (&Sigma;)</div></div>
+    </div>
+
+    <div id="play-controls" style="display:none; text-align:center; margin-top:1rem; gap:0.6rem; justify-content:center; flex-wrap:wrap;">
+      <button class="btn-secondary" id="undo-btn" style="padding:0.5rem 1rem; border-radius:7px; cursor:pointer;" disabled>&#8630; Undo move</button>
+      <button class="btn-secondary" id="hint-btn" style="padding:0.5rem 1rem; border-radius:7px; cursor:pointer; border-color: var(--gold); color: var(--gold);">&#9733; Hint &mdash; point to a swap (+15s)</button>
+      <button class="btn-secondary next-order-btn" id="next-order-btn" type="button" disabled title="Solve this square to unlock the next size">Next: 4&times;4 &rarr;</button>
+    </div>
+
+    <div style="text-align:center; margin-top:1.2rem;">
+      <button class="btn" id="scramble-btn" style="display:none;">Start solving today's square</button>
+    </div>
+
+    <div class="win-banner" id="win-banner" style="display:none;"></div>
+  </div>
+
+  <div class="card" style="max-width:640px; margin:1.5rem auto 0;">
+    <h3>Today's fastest solves</h3>
+    <div id="daily-board-wrap"></div>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/magicSquare.js"></script>
+<script>
+const HINT_PENALTY_SECONDS = 15;
+const PLAYABLE_ORDERS = MagicSquare.ALLOWED_ORDERS;
+let me = null;
+let state = null;
+let currentOrder = null;
+let completedOrders = [];
+let hintTimeout = null;
+
+function dailyProgressKey() {
+  return `ramanujan-daily-order-${new Date().toISOString().slice(0, 10)}`;
+}
+
+function saveDailyOrder(order) {
+  localStorage.setItem(dailyProgressKey(), String(order));
+}
+
+async function boot() {
+  me = await requireSession();
+  document.getElementById("nav-user").textContent = me.username;
+  if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+  document.getElementById("streak-line").textContent = me.daily_streak > 0
+    ? `\uD83D\uDD25 ${me.daily_streak} day streak`
+    : "Start a streak by solving today's challenge";
+  initNav("daily");
+
+  document.getElementById("scramble-btn").addEventListener("click", startPuzzle);
+  document.getElementById("hint-btn").addEventListener("click", useHint);
+  document.getElementById("next-order-btn").addEventListener("click", goToNextOrder);
+  document.getElementById("undo-btn").addEventListener("click", undoMove);
+
+  // The server (not a locally-cached value) decides which size is next —
+  // this is what enforces "3x3, then 4x4, then 5x5 ..." with no way back
+  // to an earlier size, including on a fresh page load. completed_orders
+  // is rendered as a checkmark on the picker so it's obvious *why* a size
+  // was skipped straight to, instead of it looking like a bug.
+  const progress = await api.get("/api/daily/progress");
+  completedOrders = progress.completed_orders || [];
+  buildOrderPicker();
+  if (progress.complete) {
+    showAllComplete();
+    return;
+  }
+  currentOrder = progress.next_order;
+  saveDailyOrder(currentOrder);
+  selectOrder(currentOrder);
+}
+
+function showAllComplete() {
+  document.getElementById("order-picker").style.display = "none";
+  document.getElementById("puzzle-card").style.display = "none";
+  const note = document.getElementById("all-complete-note");
+  note.style.display = "block";
+  note.innerHTML = `<strong>You've completed every Daily Challenge size for today \u2705</strong><small>Come back after midnight UTC for a brand-new run, from 3&times;3 through 10&times;10.</small>`;
+}
+
+function buildOrderPicker() {
+  const wrap = document.getElementById("order-picker");
+  wrap.innerHTML = MagicSquare.DISPLAY_ORDERS.map((o) => {
+    const possible = MagicSquare.isPossible(o);
+    const done = completedOrders.includes(o);
+    const label = !possible
+      ? `${o}&times;${o} &middot; n/a`
+      : done
+        ? `&#10003; ${o}&times;${o} done`
+        : `${o}&times;${o} &middot; &Sigma;${MagicSquare.magicConstant(o)}`;
+    const cls = `order-btn${possible ? "" : " impossible"}${done ? " completed" : ""}`;
+    const title = done ? ` title="Already solved in today's Daily Challenge"` : "";
+    return `<button class="${cls}" data-order="${o}"${possible && o === currentOrder ? "" : " disabled"}${title}>${label}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".order-btn").forEach((btn) => {
+    btn.addEventListener("click", () => selectOrder(parseInt(btn.dataset.order, 10)));
+  });
+}
+
+function updateOrderPicker() {
+  document.querySelectorAll(".order-btn").forEach((b) => {
+    const order = parseInt(b.dataset.order, 10);
+    b.classList.toggle("active", order === currentOrder);
+    b.disabled = !MagicSquare.isPossible(order) || order !== currentOrder;
+  });
+}
+
+async function selectOrder(order, { advance = false } = {}) {
+  // The order picker is intentionally one-way for each day's challenge.
+  // Only the Next button may advance from the current completed order.
+  if (!advance && order !== currentOrder) return;
+  currentOrder = order;
+  updateOrderPicker();
+  stopTimer();
+  clearHintArrow();
+  document.getElementById("hud").style.display = "none";
+  document.getElementById("play-controls").style.display = "none";
+  document.getElementById("win-banner").style.display = "none";
+  document.getElementById("already-note").style.display = "none";
+  document.getElementById("board").innerHTML = "";
+  document.getElementById("constraint-note").textContent = "";
+
+  if (!MagicSquare.isPossible(order)) {
+    document.getElementById("scramble-btn").style.display = "none";
+    document.getElementById("stage-label").textContent = "";
+    const note = document.getElementById("impossible-note");
+    note.style.display = "block";
+    note.textContent = `A ${order}\u00d7${order} magic square is not possible \u2014 there's no arrangement where every row, column, AND diagonal share the same sum. Try a different order.`;
+    document.getElementById("daily-board-wrap").innerHTML = "";
+    document.getElementById("row-sum-labels").innerHTML = "";
+    document.getElementById("col-sum-labels").innerHTML = "";
+    document.getElementById("diag-left-label").innerHTML = "";
+    document.getElementById("diag-right-label").innerHTML = "";
+    state = null;
+    return;
+  }
+  document.getElementById("impossible-note").style.display = "none";
+  document.getElementById("scramble-btn").style.display = "inline-flex";
+  document.getElementById("scramble-btn").textContent = "Start solving today's square";
+  document.getElementById("stage-label").textContent = "Watch it build, then start solving today's puzzle";
+
+  const data = await api.get(`/api/daily/${order}`);
+  document.getElementById("daily-title").textContent = `Today's Challenge \u2014 ${data.date}`;
+  document.getElementById("hud-target").textContent = data.target;
+  document.getElementById("constraint-note").textContent = `Every row, column & diagonal must sum to ${data.target}`;
+
+  state = {
+    order, target: data.target, solved: data.solved, path: data.path,
+    scrambled: data.scrambled, current: null, selectedIdx: null, hintIndices: [], pendingHint: null,
+    moves: 0, hints: 0, moveHistory: [], startTime: null, timerHandle: null, solvedFlag: false,
+  };
+
+  if (data.already_attempted) {
+    document.getElementById("scramble-btn").style.display = "none";
+    document.getElementById("stage-label").textContent = "You've already completed today's challenge for this order.";
+    const note = document.getElementById("already-note");
+    note.style.display = "block";
+    const r = data.result;
+    note.innerHTML = `<strong>Already attempted today \u2705</strong><div class="result-stats">
+      <span><b>${formatTime(r.time_taken)}</b> time</span>
+      <span><b>${r.moves_made}</b> moves</span>
+      <span><b>${r.hints_used}</b> hints</span>
+    </div><small>Come back after midnight UTC for a new ${order}\u00d7${order} challenge.</small>`;
+  }
+
+  renderBuild();
+  renderSumLabels();
+  loadDailyLeaderboard(order);
+  updateNextButton();
+}
+
+function renderBuild() {
+  const { order, path } = state;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+  const cells = [];
+  for (let i = 0; i < order * order; i++) {
+    const d = document.createElement("div");
+    d.className = "tile empty";
+    board.appendChild(d);
+    cells.push(d);
+  }
+  let i = 0;
+  const speed = order <= 5 ? 140 : order <= 7 ? 80 : 45;
+  (function step() {
+    if (i >= path.length) return;
+    const { row, col, value } = path[i];
+    const idx = row * order + col;
+    cells[idx].className = "tile building";
+    cells[idx].textContent = value;
+    i++;
+    setTimeout(step, speed);
+  })();
+}
+
+async function startPuzzle() {
+  try { state.gameId = (await api.post("/api/game/start", { order: state.order, is_daily: true })).game_id; }
+  catch (err) { document.getElementById("win-banner").style.display = "block"; document.getElementById("win-banner").textContent = err.message; return; }
+  state.current = [...state.scrambled];
+  state.moves = 0;
+  state.hints = 0;
+  state.moveHistory = [];
+  state.selectedIdx = null;
+  state.hintIndices = [];
+  state.pendingHint = null;
+  state.solvedFlag = false;
+  document.getElementById("win-banner").style.display = "none";
+  document.getElementById("scramble-btn").style.display = "none";
+  document.getElementById("hud").style.display = "flex";
+  document.getElementById("play-controls").style.display = "flex";
+  document.getElementById("stage-label").textContent = "Tap two tiles to swap them and restore the square";
+  document.getElementById("hud-moves").textContent = "0";
+  document.getElementById("hud-hints").textContent = "0";
+  updateUndoState();
+  updateNextButton();
+  startTimer();
+  renderPuzzle();
+}
+
+function renderPuzzle() {
+  const { order, current, selectedIdx } = state;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+  const check = liveCheck();
+  for (let idx = 0; idx < current.length; idx++) {
+    const r = Math.floor(idx / order);
+    const c = idx % order;
+    const d = document.createElement("div");
+    d.className = "tile selectable";
+    if (idx === selectedIdx) d.classList.add("selected");
+    if (state.hintIndices.includes(idx)) d.classList.add("hint-changed");
+    if (check.rows[r]) d.classList.add("row-ok");
+    if (check.cols[c]) d.classList.add("col-ok");
+    if (state.solvedFlag) d.classList.add("solved-flash");
+    d.textContent = current[idx];
+    d.addEventListener("click", () => onTileClick(idx));
+    board.appendChild(d);
+  }
+  if (state.pendingHint) {
+    requestAnimationFrame(() => drawHintArrow(state.pendingHint[0], state.pendingHint[1]));
+  } else {
+    clearHintArrow();
+  }
+  renderSumLabels();
+}
+
+function liveCheck() {
+  const { order, current, target } = state;
+  const grid = [];
+  for (let r = 0; r < order; r++) grid.push(current.slice(r * order, r * order + order));
+  const rows = grid.map((row) => row.reduce((a, b) => a + b, 0) === target);
+  const cols = [];
+  for (let c = 0; c < order; c++) {
+    let sum = 0;
+    for (let r = 0; r < order; r++) sum += grid[r][c];
+    cols.push(sum === target);
+  }
+  let diagMain = 0, diagAnti = 0;
+  for (let i = 0; i < order; i++) { diagMain += grid[i][i]; diagAnti += grid[i][order - 1 - i]; }
+  return { rows, cols, diagMain: diagMain === target, diagAnti: diagAnti === target };
+}
+
+function renderSumLabels() {
+  if (!state) return;
+  const { order, target } = state;
+  const check = state.current ? liveCheck() : null;
+  const fontPx = order <= 5 ? 14 : order <= 7 ? 12 : order <= 8 ? 10 : 9;
+
+  const rowWrap = document.getElementById("row-sum-labels");
+  const colWrap = document.getElementById("col-sum-labels");
+  rowWrap.style.setProperty("--label-font", fontPx + "px");
+  colWrap.style.setProperty("--label-font", fontPx + "px");
+  rowWrap.style.gridTemplateRows = `repeat(${order}, 1fr)`;
+  colWrap.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+
+  rowWrap.innerHTML = Array.from({ length: order }).map((_, r) => {
+    const ok = check && check.rows[r];
+    return `<div class="sum-label${ok ? " ok" : ""}">&#8594;${target}</div>`;
+  }).join("");
+  colWrap.innerHTML = Array.from({ length: order }).map((_, c) => {
+    const ok = check && check.cols[c];
+    return `<div class="sum-label${ok ? " ok" : ""}">&#8595;${target}</div>`;
+  }).join("");
+
+  const diagLeft = document.getElementById("diag-left-label");
+  const diagRight = document.getElementById("diag-right-label");
+  diagLeft.style.setProperty("--label-font", fontPx + "px");
+  diagRight.style.setProperty("--label-font", fontPx + "px");
+  diagLeft.innerHTML = `&#8601;<span>${target}</span>`;
+  diagRight.innerHTML = `&#8600;<span>${target}</span>`;
+  diagLeft.classList.toggle("ok", !!(check && check.diagAnti));
+  diagRight.classList.toggle("ok", !!(check && check.diagMain));
+}
+
+function onTileClick(idx) {
+  if (state.solvedFlag) return;
+  if (state.selectedIdx === null) {
+    state.selectedIdx = idx;
+  } else if (state.selectedIdx === idx) {
+    state.selectedIdx = null;
+  } else {
+    swapTiles(state.selectedIdx, idx);
+    state.moveHistory.push([state.selectedIdx, idx]);
+    state.moves++;
+    state.pendingHint = null;
+    api.post("/api/attempts/progress", { game_id: state.gameId, action: "move" }).catch(() => {});
+    document.getElementById("hud-moves").textContent = state.moves;
+    state.selectedIdx = null;
+    updateUndoState();
+    checkSolved();
+  }
+  renderPuzzle();
+}
+
+function swapTiles(a, b) {
+  const tmp = state.current[a];
+  state.current[a] = state.current[b];
+  state.current[b] = tmp;
+}
+
+function updateUndoState() {
+  document.getElementById("undo-btn").disabled = state.moveHistory.length === 0 || state.solvedFlag;
+}
+
+function nextOrderFor(order) {
+  const index = PLAYABLE_ORDERS.indexOf(order);
+  return index >= 0 ? PLAYABLE_ORDERS[index + 1] || null : null;
+}
+
+function updateNextButton() {
+  const btn = document.getElementById("next-order-btn");
+  const nextOrder = state ? nextOrderFor(state.order) : null;
+  if (!nextOrder) {
+    btn.textContent = "All sizes complete";
+    btn.disabled = true;
+    btn.title = "10×10 is the final available size";
+    return;
+  }
+  btn.textContent = `Next: ${nextOrder}×${nextOrder} →`;
+  btn.disabled = !(state && state.solvedFlag && state.completionSaved);
+  btn.title = btn.disabled
+    ? `Solve and save this ${state ? state.order : ""}×${state ? state.order : ""} square to unlock ${nextOrder}×${nextOrder}`
+    : `Play the ${nextOrder}×${nextOrder} magic square`;
+}
+
+function goToNextOrder() {
+  const nextOrder = state && nextOrderFor(state.order);
+  if (!state || !state.solvedFlag || !state.completionSaved || !nextOrder) return;
+  currentOrder = nextOrder;
+  saveDailyOrder(nextOrder);
+  selectOrder(nextOrder, { advance: true });
+}
+
+function undoMove() {
+  if (!state || state.solvedFlag || state.moveHistory.length === 0) return;
+  const [a, b] = state.moveHistory.pop();
+  swapTiles(a, b);
+  state.moves = Math.max(0, state.moves - 1);
+  document.getElementById("hud-moves").textContent = state.moves;
+  state.selectedIdx = null;
+  updateUndoState();
+  renderPuzzle();
+}
+
+function useHint() {
+  if (!state || state.solvedFlag) return;
+  const wrongIdx = state.current.findIndex((v, i) => v !== state.solved[i]);
+  if (wrongIdx === -1) return;
+  const correctValue = state.solved[wrongIdx];
+  const sourceIdx = state.current.indexOf(correctValue);
+  state.hints++;
+  api.post("/api/attempts/progress", { game_id: state.gameId, action: "hint" }).catch(() => {});
+  document.getElementById("hud-hints").textContent = state.hints;
+  state.startTime -= HINT_PENALTY_SECONDS * 1000;
+  state.selectedIdx = null;
+  state.hintIndices = [wrongIdx, sourceIdx];
+  state.pendingHint = [sourceIdx, wrongIdx];
+  renderPuzzle();
+  if (hintTimeout) clearTimeout(hintTimeout);
+  hintTimeout = window.setTimeout(() => {
+    if (state && !state.solvedFlag) {
+      state.hintIndices = [];
+      renderPuzzle();
+    }
+  }, 4000);
+}
+
+function tileCenter(idx) {
+  const board = document.getElementById("board");
+  const wrap = document.querySelector(".board-wrap");
+  const tile = board.children[idx];
+  if (!tile) return null;
+  const tr = tile.getBoundingClientRect();
+  const wr = wrap.getBoundingClientRect();
+  return { x: tr.left - wr.left + tr.width / 2, y: tr.top - wr.top + tr.height / 2 };
+}
+
+function drawHintArrow(fromIdx, toIdx) {
+  const svg = document.getElementById("hint-arrow");
+  const a = tileCenter(fromIdx);
+  const b = tileCenter(toIdx);
+  if (!a || !b) { svg.innerHTML = ""; return; }
+  svg.innerHTML = `
+    <defs>
+      <marker id="hint-arrowhead2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="var(--gold)"></path>
+      </marker>
+    </defs>
+    <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
+          stroke="var(--gold)" stroke-width="3" stroke-dasharray="7 5"
+          marker-end="url(#hint-arrowhead2)" opacity="0.9">
+      <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.6s" repeatCount="indefinite"></animate>
+    </line>
+  `;
+}
+
+function clearHintArrow() {
+  const svg = document.getElementById("hint-arrow");
+  if (svg) svg.innerHTML = "";
+}
+
+function checkSolved() {
+  const solved = state.current.every((v, i) => v === state.solved[i]);
+  if (solved) {
+    state.solvedFlag = true;
+    state.pendingHint = null;
+    clearHintArrow();
+    stopTimer();
+    updateUndoState();
+    const elapsed = Math.max(0, Math.round((Date.now() - state.startTime) / 1000));
+    document.getElementById("win-banner").style.display = "block";
+    renderResult(elapsed, "Recording your result…");
+    document.getElementById("scramble-btn").style.display = "none";
+    api.post("/api/attempts", {
+      game_id: state.gameId,
+      grid: state.current,
+    }).then((res) => {
+      let msg = "Saved to today's leaderboard.";
+      if (res.newly_earned && res.newly_earned.length > 0) {
+        msg += ` New badge${res.newly_earned.length > 1 ? "s" : ""} unlocked!`;
+      }
+      renderResult(elapsed, msg);
+      state.completionSaved = true;
+      if (!completedOrders.includes(state.order)) completedOrders.push(state.order);
+      buildOrderPicker();
+      updateOrderPicker();
+      updateNextButton();
+      loadDailyLeaderboard(state.order);
+    }).catch((err) => {
+      renderResult(elapsed, `Could not save attempt: ${err.message}`);
+      updateNextButton();
+    });
+  }
+}
+
+function renderResult(elapsed, status) {
+  document.getElementById("win-banner").innerHTML = `
+    <strong>Today's square solved!</strong>
+    <div class="result-stats">
+      <span><b>${formatTime(elapsed)}</b> total time</span>
+      <span><b>${state.moves}</b> moves</span>
+      <span><b>${state.hints}</b> total hints</span>
+    </div>
+    <small>${status}</small>
+  `;
+}
+
+function startTimer() {
+  state.startTime = Date.now();
+  state.timerHandle = setInterval(() => {
+    const elapsed = Math.max(0, Math.round((Date.now() - state.startTime) / 1000));
+    document.getElementById("hud-time").textContent = formatTime(elapsed);
+  }, 250);
+}
+function stopTimer() {
+  if (state && state.timerHandle) clearInterval(state.timerHandle);
+}
+
+async function loadDailyLeaderboard(order) {
+  const rows = await api.get(`/api/leaderboard/daily/${order}`);
+  const wrap = document.getElementById("daily-board-wrap");
+  if (rows.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">No solves yet today for ${order} &times; ${order}. Be the first.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>#</th><th>Player</th><th>Time</th><th>Moves</th><th>Hints</th></tr></thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr>
+            <td class="rank">${i + 1}</td>
+            <td>${escapeHtml(r.username)}</td>
+            <td class="mono">${formatTime(r.time_taken)}</td>
+            <td class="mono">${r.moves_made}</td>
+            <td class="mono">${r.hints_used}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+boot();
+</script>
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

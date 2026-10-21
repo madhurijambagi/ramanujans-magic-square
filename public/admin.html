@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" class="active">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow">Restricted area</div>
+  <h2>Administration</h2>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-users">Users</button>
+    <button class="tab-btn" id="tab-attempts">Attempts</button>
+    <button class="tab-btn" id="tab-chatbot">Chatbot review</button>
+  </div>
+
+  <div class="card" id="panel-users">
+    <h3>Registered users</h3>
+    <div id="users-wrap"></div>
+  </div>
+
+  <div class="card" id="panel-attempts" style="display:none;">
+    <h3>Recent attempts, system-wide</h3>
+    <div id="attempts-wrap"></div>
+  </div>
+
+  <div class="card" id="panel-chatbot" style="display:none;">
+    <h3>Companion usage and feedback</h3>
+    <div class="chatbot-stat-grid" id="chatbot-stats"></div>
+    <div id="chatbot-messages"></div>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script>
+let me = null;
+
+async function boot() {
+  me = await requireSession();
+  document.getElementById("nav-user").textContent = me.username;
+  initNav("admin");
+
+  if (!me.is_admin) {
+    document.querySelector("main").innerHTML =
+      `<div class="empty-state">Administrator privilege required to view this page.</div>`;
+    return;
+  }
+
+  document.getElementById("tab-users").addEventListener("click", () => switchTab("users"));
+  document.getElementById("tab-attempts").addEventListener("click", () => switchTab("attempts"));
+  document.getElementById("tab-chatbot").addEventListener("click", () => switchTab("chatbot"));
+
+  await Promise.all([loadUsers(), loadAttempts(), loadChatbotReview()]);
+}
+
+function switchTab(tab) {
+  document.getElementById("tab-users").classList.toggle("active", tab === "users");
+  document.getElementById("tab-attempts").classList.toggle("active", tab === "attempts");
+  document.getElementById("tab-chatbot").classList.toggle("active", tab === "chatbot");
+  document.getElementById("panel-users").style.display = tab === "users" ? "block" : "none";
+  document.getElementById("panel-attempts").style.display = tab === "attempts" ? "block" : "none";
+  document.getElementById("panel-chatbot").style.display = tab === "chatbot" ? "block" : "none";
+}
+
+async function loadChatbotReview() {
+  const wrap = document.getElementById("chatbot-messages");
+  try {
+    const data = await api.get("/api/admin/chatbot");
+    const stats = data.summary || {};
+    document.getElementById("chatbot-stats").innerHTML = `
+      <div class="chatbot-stat"><div class="chatbot-stat-value">${stats.messages || 0}</div><div class="chatbot-stat-label">Responses</div></div>
+      <div class="chatbot-stat"><div class="chatbot-stat-value">${stats.reports || 0}</div><div class="chatbot-stat-label">Open reports</div></div>
+      <div class="chatbot-stat"><div class="chatbot-stat-value">${stats.unhelpful || 0}</div><div class="chatbot-stat-label">Marked unhelpful</div></div>`;
+    if (!data.messages.length) { wrap.innerHTML = `<div class="empty-state">No chatbot messages yet.</div>`; return; }
+    wrap.innerHTML = `<table><thead><tr><th>Player</th><th>Question / response</th><th>Feedback</th><th>Status</th></tr></thead><tbody>${data.messages.map(m => `<tr>
+      <td>${escapeHtml(m.username || "Guest")}<br><small>${escapeHtml(m.game_title || "")}</small></td>
+      <td><strong>${escapeHtml(m.question || "")}</strong><br>${escapeHtml(m.content || "")}${m.feedback_note ? `<br><small>Note: ${escapeHtml(m.feedback_note)}</small>` : ""}</td>
+      <td>${escapeHtml(m.feedback || "—")}</td>
+      <td>${m.reported ? `<span class="badge">Reported</span> <button class="btn-secondary" data-resolve-chat="${m.id}">Resolve</button>` : escapeHtml(m.moderation_reason || "—")}</td>
+      </tr>`).join("")}</tbody></table>`;
+    wrap.querySelectorAll("[data-resolve-chat]").forEach(btn => btn.addEventListener("click", async () => {
+      try { await api.request("PATCH", `/api/admin/chatbot/${btn.dataset.resolveChat}/resolve`); await loadChatbotReview(); }
+      catch (err) { alert(err.message); }
+    }));
+  } catch (err) { wrap.innerHTML = `<div class="empty-state">Could not load chatbot review: ${escapeHtml(err.message)}</div>`; }
+}
+
+async function loadUsers() {
+  const users = await api.get("/api/admin/users");
+  const wrap = document.getElementById("users-wrap");
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Username</th><th>Role</th><th>Attempts</th><th>Joined</th><th></th></tr></thead>
+      <tbody>
+        ${users.map((u) => `
+          <tr data-user-id="${u.id}">
+            <td>${u.id === me.id ? escapeHtml(u.username) : "Member"}</td>
+            <td>${u.is_admin ? '<span class="badge">admin</span>' : 'member'}</td>
+            <td class="mono">${u.attempt_count}</td>
+            <td>${formatDate(u.created_at)}</td>
+            <td style="text-align:right; font-size:0.8rem;">
+              ${u.id === me.id
+                ? '<span style="color:var(--muted);">you</span>'
+                : `<button class="btn-secondary" style="padding:0.3rem 0.7rem; font-size:0.78rem;" data-toggle-admin="${u.id}" data-next="${u.is_admin ? 0 : 1}">${u.is_admin ? "Revoke admin" : "Make admin"}</button>`}
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    <p style="color:var(--muted); font-size:0.78rem; margin-top:0.8rem;">Administrators can moderate attempts and manage who else has admin access, but cannot delete another member's account — that's always self-service.</p>
+  `;
+  wrap.querySelectorAll("[data-toggle-admin]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-toggle-admin");
+      const nextIsAdmin = btn.getAttribute("data-next") === "1";
+      const verb = nextIsAdmin ? "grant admin access to" : "revoke admin access from";
+      if (!confirm(`Are you sure you want to ${verb} this user?`)) return;
+      try {
+        await api.request("PATCH", `/api/admin/users/${id}/role`, { is_admin: nextIsAdmin });
+        await loadUsers();
+      } catch (err) { alert(err.message); }
+    });
+  });
+}
+
+async function loadAttempts() {
+  const attempts = await api.get("/api/admin/attempts");
+  const wrap = document.getElementById("attempts-wrap");
+  if (attempts.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">No attempts recorded yet.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Player</th><th>Order</th><th>Time</th><th>Moves</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        ${attempts.map((a) => `
+          <tr data-attempt-id="${a.id}">
+            <td>${a.user_id === me.id ? escapeHtml(a.username) : "Member"}</td>
+            <td class="mono">${a.square_order} &times; ${a.square_order}</td>
+            <td class="mono">${formatTime(a.time_taken)}</td>
+            <td class="mono">${a.moves_made}</td>
+            <td>${formatDate(a.date_attempted)}</td>
+            <td style="text-align:right;"><button class="btn-danger" data-delete-attempt="${a.id}">Delete</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+  wrap.querySelectorAll("[data-delete-attempt]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-delete-attempt");
+      if (!confirm("Delete this attempt?")) return;
+      try {
+        await api.del(`/api/admin/attempts/${id}`);
+        await Promise.all([loadUsers(), loadAttempts()]);
+      } catch (err) { alert(err.message); }
+    });
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+boot();
+</script>
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

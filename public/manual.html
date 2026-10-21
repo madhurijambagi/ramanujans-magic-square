@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Mode &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual" class="active">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow" style="text-align:center;">Manual mode &middot; you fill every cell</div>
+  <h2 style="text-align:center;">Build the square yourself</h2>
+  <p style="text-align:center; max-width:60ch; margin:0 auto 1.4rem;">
+    Every cell starts empty. Type the numbers yourself, and use each number exactly once.
+    Only numbers from 1 to n&sup2; are accepted, so a 3&times;3 square takes 1&ndash;9 and rejects 10.
+  </p>
+
+  <div class="order-picker" id="order-picker"></div>
+
+  <div class="card" style="max-width:640px; margin:0 auto;">
+    <div id="constraint-note" style="text-align:center; color:var(--gold-dim); font-size:0.78rem; font-family:var(--font-mono); min-height:1.1em; margin-bottom:0.3rem;"></div>
+
+    <div class="board-super-wrap" style="width:min(560px, 92vw); margin: 1rem auto 0;">
+      <div style="display:flex; align-items:stretch;">
+        <div class="board-wrap" style="position:relative; flex:1; min-width:0;">
+          <div id="board" class="grid-board" style="width:100%;"></div>
+        </div>
+        <div id="row-sum-labels" class="row-sum-labels"></div>
+      </div>
+      <div style="display:flex; align-items:center;">
+        <div id="diag-left-label" class="diag-label" title="Anti-diagonal">&#8601;</div>
+        <div id="col-sum-labels" class="col-sum-labels" style="flex:1;"></div>
+        <div id="diag-right-label" class="diag-label" title="Main diagonal">&#8600;</div>
+      </div>
+    </div>
+
+    <div class="input-note" id="input-note" role="status" aria-live="polite"></div>
+
+    <div class="game-hud">
+      <div class="stat"><div class="value" id="hud-time">0:00</div><div class="label">Time</div></div>
+      <div class="stat"><div class="value" id="hud-filled">0/9</div><div class="label">Cells filled</div></div>
+      <div class="stat"><div class="value" id="hud-target">&mdash;</div><div class="label">Magic constant (&Sigma;)</div></div>
+    </div>
+
+    <div style="text-align:center; color:var(--muted); font-size:0.8rem; margin-bottom:0.5rem;" id="tray-label">Numbers to place (click one to drop it into the selected cell)</div>
+    <div class="num-tray" id="num-tray"></div>
+
+    <div style="text-align:center; margin-top:1.2rem;">
+      <button class="btn-ghost" id="clear-btn" type="button">Clear grid</button>
+    </div>
+
+    <div class="win-banner" id="win-banner" style="display:none;"></div>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/magicSquare.js"></script>
+<script>
+// ---------------------------------------------------------------------------
+// Manual mode: everything runs in the browser. Nothing here is scored or saved,
+// so it is a free practice space; the graded version lives on the Play page.
+// ---------------------------------------------------------------------------
+let n = 3, total = 9, target = 15, digits = 1;
+let values = [];              // 0 = empty cell
+let inputs = [];              // <input> elements, same order as values
+let lastIdx = null;           // most recently focused cell
+let startTime = null, timerHandle = null, solved = false, noteTimer = null;
+
+async function boot() {
+  const me = await requireSession();
+  if (!me) return;
+  document.getElementById("nav-user").textContent = me.username;
+  if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+  initNav("manual");
+
+  buildPicker();
+  document.getElementById("clear-btn").addEventListener("click", () => reset(n));
+  reset(3);
+}
+
+function buildPicker() {
+  const wrap = document.getElementById("order-picker");
+  wrap.innerHTML = MagicSquare.ALLOWED_ORDERS.map((o) =>
+    `<button class="order-btn" type="button" data-order="${o}">${o}&times;${o} &middot; 1&ndash;${o * o}</button>`
+  ).join("");
+  wrap.querySelectorAll(".order-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const order = parseInt(btn.dataset.order, 10);
+      if (order === n) return;
+      if (values.some(Boolean) && !solved && !confirm("Switching size clears the grid you are working on. Continue?")) return;
+      reset(order);
+    });
+  });
+}
+
+function reset(order) {
+  n = order; total = n * n; target = MagicSquare.magicConstant(n); digits = String(total).length;
+  values = Array(total).fill(0);
+  solved = false; lastIdx = null;
+  stopTimer(); startTime = null;
+  document.getElementById("hud-time").textContent = "0:00";
+  document.getElementById("win-banner").style.display = "none";
+  document.getElementById("hud-target").textContent = target;
+  document.getElementById("constraint-note").textContent =
+    `Use 1 to ${total}, each once. Every row, column & diagonal must add up to ${target}`;
+  document.querySelectorAll("#order-picker .order-btn").forEach((b) =>
+    b.classList.toggle("active", parseInt(b.dataset.order, 10) === n));
+  showNote("");
+  renderGrid();
+  refresh();
+  inputs[0].focus();
+}
+
+// ---------------------------------------------------------------- grid + input
+function renderGrid() {
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  board.innerHTML = "";
+  inputs = [];
+  for (let idx = 0; idx < total; idx++) {
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.inputMode = "numeric";
+    inp.autocomplete = "off";
+    inp.maxLength = digits + 1;   // one extra so an over-long entry (like 10 in a 3x3) is caught and explained
+    inp.className = "tile fill-input";
+    inp.setAttribute("aria-label", `Row ${Math.floor(idx / n) + 1}, column ${(idx % n) + 1}`);
+    inp.addEventListener("input", () => onType(idx));
+    inp.addEventListener("focus", () => { lastIdx = idx; inp.select(); });
+    inp.addEventListener("keydown", (e) => onKey(e, idx));
+    board.appendChild(inp);
+    inputs.push(inp);
+  }
+}
+
+function onType(idx) {
+  const inp = inputs[idx];
+  const raw = inp.value.replace(/\D/g, "");
+  if (raw === "") { setCell(idx, 0); return; }
+
+  const v = parseInt(raw, 10);
+  if (raw.length <= digits && v >= 1 && v <= total) {
+    setCell(idx, v);
+    showNote("");
+    // Move on once the number can't grow any further (e.g. 2 in a 4x4, since 20 > 16).
+    if (String(v).length >= digits || v * 10 > total) focusCell(idx + 1);
+    return;
+  }
+
+  // Not allowed as typed. If the player just appended a digit to an existing
+  // number and that digit alone is valid, treat it as overtyping (57 -> 7).
+  const prev = values[idx];
+  const last = parseInt(raw.slice(-1), 10);
+  const appended = prev && raw.length === String(prev).length + 1 && raw.startsWith(String(prev));
+  if (appended && last >= 1 && last <= total) {
+    setCell(idx, last);
+    showNote("");
+    if (String(last).length >= digits || last * 10 > total) focusCell(idx + 1);
+    return;
+  }
+
+  // Otherwise reject it and put the previous value back.
+  inp.value = prev ? String(prev) : "";
+  inp.classList.add("rejected");
+  setTimeout(() => inp.classList.remove("rejected"), 400);
+  showNote(`${raw} isn't allowed. A ${n}\u00d7${n} square uses only the numbers 1 to ${total}.`);
+}
+
+function onKey(e, idx) {
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -n, ArrowDown: n, Enter: 1 }[e.key];
+  if (step !== undefined) { e.preventDefault(); focusCell(idx + step); return; }
+  if (e.key === "Backspace" && inputs[idx].value === "") { e.preventDefault(); focusCell(idx - 1); }
+}
+
+function focusCell(idx) {
+  if (idx < 0 || idx >= total) return;
+  inputs[idx].focus();
+}
+
+function setCell(idx, v) {
+  if (solved) return;
+  values[idx] = v;
+  inputs[idx].value = v ? String(v) : "";
+  if (v && startTime === null) startTimer();
+  refresh();
+}
+
+function placeFromTray(k) {
+  if (solved) return;
+  let idx = lastIdx;
+  if (idx === null) idx = values.findIndex((v) => v === 0);
+  if (idx === -1) return;
+  setCell(idx, k);
+  showNote("");
+  focusCell(idx + 1);
+}
+
+// ---------------------------------------------------------------- live checking
+function analyze() {
+  const rows = [], cols = [];
+  for (let r = 0; r < n; r++) {
+    const line = values.slice(r * n, r * n + n);
+    rows.push({ full: line.every(Boolean), sum: line.reduce((a, b) => a + b, 0) });
+  }
+  for (let c = 0; c < n; c++) {
+    let sum = 0, full = true;
+    for (let r = 0; r < n; r++) { const v = values[r * n + c]; sum += v; if (!v) full = false; }
+    cols.push({ full, sum });
+  }
+  let dSum = 0, dFull = true, aSum = 0, aFull = true;
+  for (let i = 0; i < n; i++) {
+    const a = values[i * n + i], b = values[i * n + (n - 1 - i)];
+    dSum += a; aSum += b; if (!a) dFull = false; if (!b) aFull = false;
+  }
+  const counts = {};
+  values.forEach((v) => { if (v) counts[v] = (counts[v] || 0) + 1; });
+  return { rows, cols, main: { full: dFull, sum: dSum }, anti: { full: aFull, sum: aSum }, counts };
+}
+
+function refresh() {
+  const a = analyze();
+  const filled = values.filter(Boolean).length;
+  document.getElementById("hud-filled").textContent = `${filled}/${total}`;
+
+  inputs.forEach((inp, i) => inp.classList.toggle("wrong", !!values[i] && a.counts[values[i]] > 1));
+
+  // A line only gets a verdict once it is full; until then it shows the goal.
+  const fontPx = n <= 5 ? 14 : n <= 7 ? 12 : n <= 8 ? 10 : 9;
+  const rowWrap = document.getElementById("row-sum-labels");
+  const colWrap = document.getElementById("col-sum-labels");
+  rowWrap.style.setProperty("--label-font", fontPx + "px");
+  colWrap.style.setProperty("--label-font", fontPx + "px");
+  rowWrap.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+  colWrap.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  const label = (arrow, line) => !line.full
+    ? `<div class="sum-label">${arrow}${target}</div>`
+    : `<div class="sum-label ${line.sum === target ? "ok" : "bad"}">${arrow}${line.sum}</div>`;
+  rowWrap.innerHTML = a.rows.map((l) => label("&#8594;", l)).join("");
+  colWrap.innerHTML = a.cols.map((l) => label("&#8595;", l)).join("");
+  const dl = document.getElementById("diag-left-label"), dr = document.getElementById("diag-right-label");
+  dl.style.setProperty("--label-font", fontPx + "px");
+  dr.style.setProperty("--label-font", fontPx + "px");
+  dl.innerHTML = `&#8601;<span>${a.anti.full ? a.anti.sum : target}</span>`;
+  dr.innerHTML = `&#8600;<span>${a.main.full ? a.main.sum : target}</span>`;
+  dl.classList.toggle("ok", a.anti.full && a.anti.sum === target);
+  dl.classList.toggle("bad", a.anti.full && a.anti.sum !== target);
+  dr.classList.toggle("ok", a.main.full && a.main.sum === target);
+  dr.classList.toggle("bad", a.main.full && a.main.sum !== target);
+
+  // Number tray: used numbers fade, repeated ones turn red.
+  const tray = document.getElementById("num-tray");
+  tray.innerHTML = Array.from({ length: total }, (_, i) => {
+    const k = i + 1, c = a.counts[k] || 0;
+    return `<button type="button" class="num-chip${c === 1 ? " used" : ""}${c > 1 ? " dup" : ""}" data-n="${k}" aria-label="Place ${k}">${k}</button>`;
+  }).join("");
+  tray.querySelectorAll(".num-chip").forEach((b) =>
+    b.addEventListener("click", () => placeFromTray(parseInt(b.dataset.n, 10))));
+
+  // Solved: every cell filled, no repeats (so 1..n^2 exactly once), every line on target.
+  const allLines = [...a.rows, ...a.cols, a.main, a.anti].every((l) => l.full && l.sum === target);
+  const noRepeats = Object.values(a.counts).every((c) => c === 1);
+  if (filled === total && noRepeats && allLines) onSolved();
+}
+
+function onSolved() {
+  solved = true;
+  stopTimer();
+  const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+  inputs.forEach((i) => { i.readOnly = true; i.classList.add("solved-flash"); });
+  const banner = document.getElementById("win-banner");
+  banner.style.display = "block";
+  banner.innerHTML = `
+    <strong>Magic square complete!</strong>
+    <div class="result-stats">
+      <span><b>${formatTime(elapsed)}</b> total time</span>
+      <span>every row, column &amp; diagonal = <b>${target}</b></span>
+    </div>
+    <small>Press Clear grid to build another, or pick a different size.</small>`;
+}
+
+// ---------------------------------------------------------------- helpers
+function showNote(msg) {
+  const el = document.getElementById("input-note");
+  el.textContent = msg;
+  clearTimeout(noteTimer);
+  if (msg) noteTimer = setTimeout(() => { el.textContent = ""; }, 4000);
+}
+
+function startTimer() {
+  startTime = Date.now();
+  timerHandle = setInterval(() => {
+    const elapsed = Math.max(0, Math.round((Date.now() - startTime) / 1000));
+    document.getElementById("hud-time").textContent = formatTime(elapsed);
+  }, 250);
+}
+function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
+
+boot();
+</script>
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

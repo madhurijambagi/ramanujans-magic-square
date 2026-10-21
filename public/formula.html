@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formula &amp; Methods &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula" class="active">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn" style="display:none;">Log out</button>
+  </div>
+</nav>
+
+<main style="max-width:820px;">
+  <div class="eyebrow">Magic-square basics</div>
+  <h2>The formula</h2>
+
+  <div class="card">
+    <h3>The magic constant</h3>
+    <p>Every order-<var>n</var> magic square uses the whole numbers 1 through <var>n</var>&sup2; exactly once. Their total is fixed, so dividing it evenly across the <var>n</var> rows gives the number every row, column, and diagonal must sum to:</p>
+    <p style="text-align:center; font-family:var(--font-mono); font-size:1.4rem; color:var(--gold); margin:1.2rem 0;">M(n) = n(n&sup2; + 1) / 2</p>
+    <p>For example, a 3&times;3 square uses 1&ndash;9 (sum 45), split across 3 rows &rarr; <b style="color:var(--text);">M(3) = 15</b>. A 9&times;9 square uses 1&ndash;81 &rarr; <b style="color:var(--text);">M(9) = 369</b>. This formula holds for <em>any</em> n &mdash; it tells you the target sum even for sizes where no valid arrangement exists (like n=2).</p>
+  </div>
+
+  <div class="card">
+    <h3>Why 2&times;2 is impossible</h3>
+    <p>With 4 distinct numbers, a 2&times;2 square needs both rows, both columns, and both diagonals to share one sum. Diagonal cells overlap with every row and column, which over-constrains the 4 cells until no arrangement of distinct numbers can satisfy all six conditions simultaneously. It's the one order that's provably not magic &mdash; every other order from 3 up can be constructed.</p>
+  </div>
+
+  <div class="card" id="dob-square">
+    <h3>Build a magic square from YOUR date of birth</h3>
+    <p>Srinivasa Ramanujan was famous for constructing a 4&times;4 magic square live from a birthdate, with the date sitting unmodified in the top row. Split the date into DD (day), MM (month), CC (century), and YY (two-digit year), then fill the grid with this classical pattern:</p>
+    <pre style="background:var(--bg-alt); border:1px solid var(--border); border-radius:8px; padding:1rem; font-family:var(--font-mono); font-size:0.85rem; color:var(--text); overflow-x:auto;">DD      MM      CC      YY
+YY + 1  CC - 1  MM - 3  DD + 3
+MM - 2  DD + 2  YY + 2  CC - 2
+CC + 1  YY - 1  DD + 1  MM - 1</pre>
+    <p>Every row, every column, and both diagonals always sum to DD + MM + CC + YY. Some of those offsets (&minus;1, &minus;2, &minus;3) are negative, so a date with a small month (Jan/Feb/Mar), a small century, or a small year-tail (like "01") can push a cell to zero or below &mdash; not a natural number. When that happens, the whole square is shifted up by one uniform amount first: this keeps the magic property exact (every sum just goes up by the same 4&times;shift), and it's the only case where the top row won't literally match your typed-in date anymore.</p>
+    <p style="color:var(--muted); font-size:0.85rem;">Because the four numbers come from your actual birthdate, this general version can't <em>guarantee</em> all 16 cells come out distinct for every possible date (some dates cause two cells to coincide) &mdash; but the row/column/diagonal magic property always holds.</p>
+
+    <div style="display:flex; gap:0.8rem; flex-wrap:wrap; margin-top:1.2rem; align-items:flex-end;">
+      <div style="flex:1; min-width:180px;">
+        <label for="dob-input" style="margin-top:0;">Your date of birth</label>
+        <input type="date" id="dob-input" style="width:100%;">
+      </div>
+      <button class="btn" id="dob-build" style="margin-bottom:0.1rem;">Build my magic square</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.78rem; margin-top:0.5rem;">Nothing here is saved or sent anywhere except to compute the square &mdash; your date of birth isn't stored.</p>
+    <div class="form-error" id="dob-error"></div>
+
+    <div id="dob-breakdown" style="text-align:center; font-family:var(--font-mono); font-size:0.82rem; color:var(--muted); margin-top:0.8rem;"></div>
+    <div id="dob-result" style="margin-top:1rem;"></div>
+
+    <details style="margin-top:1.4rem;">
+      <summary style="cursor:pointer; color:var(--gold-dim); font-size:0.85rem;">Or enter four custom numbers instead</summary>
+      <div style="display:flex; gap:0.8rem; flex-wrap:wrap; margin-top:1rem; align-items:flex-end;">
+        <div><label for="ram-day" style="margin-top:0;">DD (day)</label><input type="text" id="ram-day" inputmode="numeric" style="width:80px;" value="9"></div>
+        <div><label for="ram-month" style="margin-top:0;">MM (month)</label><input type="text" id="ram-month" inputmode="numeric" style="width:80px;" value="7"></div>
+        <div><label for="ram-century" style="margin-top:0;">CC (century)</label><input type="text" id="ram-century" inputmode="numeric" style="width:80px;" value="20"></div>
+        <div><label for="ram-year" style="margin-top:0;">YY (2-digit year)</label><input type="text" id="ram-year" inputmode="numeric" style="width:80px;" value="1"></div>
+        <button class="btn-secondary" id="ram-build" style="margin-bottom:0.1rem; padding:0.6rem 1rem; border-radius:7px; cursor:pointer;">Build square</button>
+      </div>
+      <div class="form-error" id="ram-error"></div>
+      <div id="ram-result" style="margin-top:1.4rem;"></div>
+    </details>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script>
+(async () => {
+  try {
+    const me = await api.get("/api/auth/me");
+    document.getElementById("nav-user").textContent = me.username;
+    document.getElementById("logout-btn").style.display = "inline-flex";
+    if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+    initNav("formula");
+  } catch (e) { /* viewable while logged out */ }
+})();
+
+document.getElementById("dob-build").addEventListener("click", buildFromDob);
+document.getElementById("dob-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); buildFromDob(); }
+});
+document.getElementById("ram-build").addEventListener("click", buildRamanujanCustom);
+
+async function buildFromDob() {
+  const errEl = document.getElementById("dob-error");
+  const breakdown = document.getElementById("dob-breakdown");
+  const out = document.getElementById("dob-result");
+  errEl.textContent = "";
+  breakdown.textContent = "";
+  out.innerHTML = "";
+
+  const raw = document.getElementById("dob-input").value; // "YYYY-MM-DD"
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw || "");
+  if (!m) {
+    errEl.textContent = "Pick a date of birth first.";
+    return;
+  }
+  const [, yyyy, mm, dd] = m;
+  const day = parseInt(dd, 10);
+  const month = parseInt(mm, 10);
+  const century = parseInt(yyyy.slice(0, 2), 10);
+  const yearTail = parseInt(yyyy.slice(2, 4), 10);
+
+  breakdown.textContent = `Day ${day} \u00b7 Month ${month} \u00b7 Century ${century} \u00b7 Year ${yearTail}`;
+  await runRamanujan(day, month, century, yearTail, errEl, out);
+}
+
+async function buildRamanujanCustom() {
+  const errEl = document.getElementById("ram-error");
+  const out = document.getElementById("ram-result");
+  errEl.textContent = "";
+  out.innerHTML = "";
+  const a = parseInt(document.getElementById("ram-day").value, 10);
+  const b = parseInt(document.getElementById("ram-month").value, 10);
+  const c = parseInt(document.getElementById("ram-century").value, 10);
+  const d = parseInt(document.getElementById("ram-year").value, 10);
+  if ([a, b, c, d].some((v) => !Number.isFinite(v))) {
+    errEl.textContent = "Enter four whole numbers.";
+    return;
+  }
+  await runRamanujan(a, b, c, d, errEl, out);
+}
+
+async function runRamanujan(a, b, c, d, errEl, out) {
+  try {
+    const res = await api.get(`/api/ramanujan/${a}/${b}/${c}/${d}`);
+    out.innerHTML = `
+      <div class="grid-board" style="grid-template-columns: repeat(4, 1fr); width: min(320px, 80vw); margin: 0 auto;">
+        ${res.grid.flat().map((v) => `<div class="tile" style="cursor:default;">${v}</div>`).join("")}
+      </div>
+      <p style="text-align:center; margin-top:1rem; font-family:var(--font-mono); color:var(--gold);">Every row, column &amp; diagonal &rarr; ${res.target}</p>
+      ${res.shift > 0 ? `<p style="text-align:center; color:var(--muted); font-size:0.82rem;">Your numbers were small enough that a couple of cells would've gone to zero or negative &mdash; every cell here has been shifted up by +${res.shift} uniformly (which keeps the magic property exactly, just with target ${res.target} instead of ${res.target - 4 * res.shift}), so the top row no longer shows your numbers literally.</p>` : ""}
+      ${res.distinct ? "" : `<p style="text-align:center; color:var(--muted); font-size:0.82rem;">Note: for this particular date, two cells happen to share a number &mdash; the magic property still holds, but try a different date for all-distinct values.</p>`}
+    `;
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+}
+</script>
+
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

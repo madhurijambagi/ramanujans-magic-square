@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game" class="active">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow" style="text-align:center;">Enter the size of the square you want to play</div>
+  <div class="size-input-row">
+    <label for="size-input" style="margin:0; color:var(--text);">Size:</label>
+    <input type="text" id="size-input" placeholder="e.g. 3x3" value="3x3" autocomplete="off">
+    <button class="btn" id="size-generate-btn">Generate</button>
+  </div>
+  <div class="form-error" id="size-error" style="text-align:center; margin-bottom:0.6rem;" aria-live="polite"></div>
+
+  <div class="order-picker" id="mode-picker" style="margin-bottom:1.2rem;">
+    <button class="order-btn active" type="button" data-mode="scramble" title="A finished square is scrambled; swap tiles to restore it">Swap puzzle</button>
+    <button class="order-btn" type="button" data-mode="fill" title="Start from an empty grid and type the numbers yourself">Fill the square &middot; 3 attempts</button>
+  </div>
+
+  <div class="card game-card" id="game-card" style="max-width:640px; margin:0 auto;">
+    <div id="stage-label" style="text-align:center; color:var(--muted); font-size:0.85rem; min-height:1.2em;"></div>
+    <div id="constraint-note" style="text-align:center; color:var(--gold-dim); font-size:0.78rem; font-family:var(--font-mono); min-height:1.1em; margin-bottom:0.3rem;"></div>
+
+    <div id="impossible-note" class="empty-state" style="display:none; padding:1.6rem 1rem;"></div>
+
+    <div class="board-super-wrap" style="width:min(560px, 92vw); margin: 1rem auto 0;">
+      <div style="display:flex; align-items:stretch;">
+        <div class="board-wrap" style="position:relative; flex:1; min-width:0;">
+          <div id="board" class="grid-board" style="width:100%;"></div>
+          <svg id="hint-arrow" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;"></svg>
+        </div>
+        <div id="row-sum-labels" class="row-sum-labels"></div>
+      </div>
+      <div style="display:flex; align-items:center;">
+        <div id="diag-left-label" class="diag-label" title="Anti-diagonal">&#8601;</div>
+        <div id="col-sum-labels" class="col-sum-labels" style="flex:1;"></div>
+        <div id="diag-right-label" class="diag-label" title="Main diagonal">&#8600;</div>
+      </div>
+    </div>
+
+    <div class="game-hud" id="hud" style="display:none;">
+      <div class="stat"><div class="value" id="hud-time">0:00</div><div class="label">Time</div></div>
+      <div class="stat"><div class="value" id="hud-moves">0</div><div class="label" id="hud-moves-label">Moves</div></div>
+      <div class="stat" id="hud-hints-stat"><div class="value" id="hud-hints">0</div><div class="label">Hints used</div></div>
+      <div class="stat"><div class="value" id="hud-target">&mdash;</div><div class="label">Magic constant (&Sigma;)</div></div>
+    </div>
+
+    <div id="play-controls" style="display:none; text-align:center; margin-top:1rem; gap:0.6rem; justify-content:center; flex-wrap:wrap;">
+      <button class="btn-secondary" id="undo-btn" style="padding:0.5rem 1rem; border-radius:7px; cursor:pointer;" disabled>&#8630; Undo move</button>
+      <button class="btn-secondary" id="hint-btn" style="padding:0.5rem 1rem; border-radius:7px; cursor:pointer; border-color: var(--gold); color: var(--gold);">&#9733; Hint &mdash; point to a swap (+15s)</button>
+      <button class="btn-secondary next-order-btn" id="next-order-btn" type="button" disabled title="Solve this square to unlock the next size">Next: 4&times;4 &rarr;</button>
+    </div>
+
+    <div id="fill-panel" class="fill-panel" style="display:none;">
+      <div class="attempt-row" aria-live="polite"><span>Attempts</span><span id="attempt-pips"></span></div>
+      <div class="fill-actions">
+        <button class="btn" id="check-btn" type="button">Check my answer</button>
+        <button class="btn-ghost" id="clear-btn" type="button">Clear grid</button>
+      </div>
+      <div class="fill-feedback" id="fill-feedback" aria-live="polite"></div>
+    </div>
+
+    <div style="text-align:center; margin-top:1.2rem;">
+      <button class="btn" id="scramble-btn" style="display:none;">Scramble &amp; start solving</button>
+    </div>
+
+    <div class="win-banner" id="win-banner" style="display:none;"></div>
+    <div style="text-align:center; margin-top:1rem;">
+      <button class="btn-ghost" id="export-btn" style="display:none;">Download square as image</button>
+    </div>
+  </div>
+</main>
+
+<!-- Kept outside the game card so an input error is never attached to an old board. -->
+<div class="app-modal" id="dimension-modal" role="dialog" aria-modal="true" aria-labelledby="dimension-modal-title" hidden>
+  <div class="app-modal__backdrop" data-modal-close></div>
+  <div class="app-modal__panel" role="document">
+    <button class="app-modal__close" id="dimension-modal-close" type="button" aria-label="Close message">&times;</button>
+    <div class="app-modal__icon" aria-hidden="true">!</div>
+    <p class="eyebrow">Check the dimensions</p>
+    <h3 id="dimension-modal-title">Magic square not generated</h3>
+    <p id="dimension-modal-message"></p>
+    <button class="btn" id="dimension-modal-ok" type="button">Try again</button>
+  </div>
+</div>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles. Formula: M(n) = n(n&sup2;+1)/2 &middot; <a href="/formula.html">how it works</a></footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/magicSquare.js"></script>
+<script src="/js/companion.js"></script>
+<script>
+const HINT_PENALTY_SECONDS = 15;
+const PLAYABLE_ORDERS = MagicSquare.ALLOWED_ORDERS;
+let me = null;
+let state = null; // { order, target, solved, scrambled, current, selectedIdx, moves, hints, moveHistory, startTime, timerHandle, solvedFlag }
+let hintTimeout = null;
+let buildRun = 0;
+let mode = "scramble";   // "scramble" (swap puzzle) or "fill" (type the numbers yourself)
+let currentOrder = 3;
+const MAX_ATTEMPTS = 3;
+
+async function boot() {
+  me = await requireSession();
+  document.getElementById("nav-user").textContent = me.username;
+  if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+  initNav("game");
+
+  document.getElementById("size-generate-btn").addEventListener("click", handleSizeSubmit);
+  document.getElementById("size-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); handleSizeSubmit(); }
+  });
+  document.getElementById("scramble-btn").addEventListener("click", startPuzzle);
+  document.getElementById("hint-btn").addEventListener("click", useHint);
+  document.getElementById("next-order-btn").addEventListener("click", goToNextOrder);
+  document.getElementById("undo-btn").addEventListener("click", undoMove);
+  document.getElementById("check-btn").addEventListener("click", checkFill);
+  document.getElementById("clear-btn").addEventListener("click", clearFill);
+  document.querySelectorAll("#mode-picker .order-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      if (mode === b.dataset.mode) return;
+      mode = b.dataset.mode;
+      document.querySelectorAll("#mode-picker .order-btn").forEach((x) => x.classList.toggle("active", x === b));
+      selectOrder(currentOrder);
+    });
+  });
+  document.getElementById("export-btn").addEventListener("click", exportImage);
+  document.getElementById("dimension-modal-close").addEventListener("click", closeDimensionModal);
+  document.getElementById("dimension-modal-ok").addEventListener("click", closeDimensionModal);
+  document.querySelector("[data-modal-close]").addEventListener("click", closeDimensionModal);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDimensionModal(); });
+  window.addEventListener("resize", () => { if (state && state.pendingHint) drawHintArrow(state.pendingHint[0], state.pendingHint[1]); });
+
+  selectOrder(3);
+}
+
+// Accepts "3x3", "3 x 3", "3X3", "3×3", "3*3", "3,3" ... a loose separator
+// so a typo doesn't get treated as an unrelated parse failure.
+function parseSize(raw) {
+  const cleaned = String(raw || "").trim().toLowerCase();
+  const m = cleaned.match(/^(\d+)\s*[x×*,]\s*(\d+)$/);
+  if (!m) return { error: `"${raw}" isn't a size. Enter it like "3x3" or "4x4" (rows x columns).` };
+  const rows = parseInt(m[1], 10);
+  const cols = parseInt(m[2], 10);
+  if (rows !== cols) {
+    return { error: `${rows}\u00d7${cols} is not a valid magic square matrix \u2014 a magic square must be square (equal rows and columns, like ${rows}\u00d7${rows}).` };
+  }
+  const n = rows;
+  if (n < MagicSquare.MIN_ORDER || n > MagicSquare.MAX_ORDER) {
+    return { error: `Choose a size between ${MagicSquare.MIN_ORDER}\u00d7${MagicSquare.MIN_ORDER} and ${MagicSquare.MAX_ORDER}\u00d7${MagicSquare.MAX_ORDER}.` };
+  }
+  return { n };
+}
+
+function handleSizeSubmit() {
+  const parsed = parseSize(document.getElementById("size-input").value);
+  if (parsed.error) {
+    showDimensionError(parsed.error);
+    return;
+  }
+  closeDimensionModal();
+  selectOrder(parsed.n);
+}
+
+function showDimensionError(message) {
+  buildRun++; // cancel any in-progress build animation before hiding the board
+  stopTimer();
+  clearHintArrow();
+  state = null;
+  document.getElementById("game-card").hidden = true;
+  document.getElementById("size-error").textContent = "";
+  document.getElementById("dimension-modal-message").textContent = message;
+  document.getElementById("dimension-modal").hidden = false;
+  document.getElementById("dimension-modal-ok").focus();
+}
+
+function closeDimensionModal() {
+  const modal = document.getElementById("dimension-modal");
+  if (modal.hidden) return;
+  modal.hidden = true;
+  document.getElementById("size-input").focus();
+}
+
+async function selectOrder(order) {
+  buildRun++;
+  document.getElementById("game-card").hidden = false;
+  document.getElementById("size-input").value = `${order}x${order}`;
+  document.getElementById("size-error").textContent = "";
+  stopTimer();
+  clearHintArrow();
+  document.getElementById("hud").style.display = "none";
+  document.getElementById("play-controls").style.display = "none";
+  document.getElementById("win-banner").style.display = "none";
+  document.getElementById("export-btn").style.display = "none";
+  document.getElementById("board").innerHTML = "";
+  document.getElementById("constraint-note").textContent = "";
+  currentOrder = order;
+  document.getElementById("fill-panel").style.display = "none";
+  document.getElementById("fill-feedback").innerHTML = "";
+  document.getElementById("win-banner").classList.remove("fail");
+  setHudMode("scramble");
+
+  if (!MagicSquare.isPossible(order)) {
+    showDimensionError(`A ${order}\u00d7${order} magic square is not mathematically possible. Try any square size from 3\u00d73 to 10\u00d710.`);
+    return;
+  }
+  document.getElementById("impossible-note").style.display = "none";
+  document.getElementById("scramble-btn").style.display = "inline-flex";
+  document.getElementById("scramble-btn").textContent = "Scramble & start solving";
+  document.getElementById("stage-label").textContent = "Watch it build, then scramble to begin";
+
+  if (mode === "fill") { setupFill(order); return; }
+
+  const data = await api.get(`/api/game/new/${order}`);
+  state = {
+    mode: "scramble",
+    order, target: data.target, solved: data.solved, path: data.path,
+    scrambled: data.scrambled, current: null, selectedIdx: null, hintIndices: [], pendingHint: null,
+    moves: 0, hints: 0, moveHistory: [], startTime: null, timerHandle: null, solvedFlag: false,
+  };
+  document.getElementById("hud-target").textContent = data.target;
+  document.getElementById("constraint-note").textContent = `Every row, column & diagonal must sum to ${data.target}`;
+  renderBuild();
+  renderSumLabels();
+  updateNextButton();
+}
+
+function renderBuild() {
+  const { order, path } = state;
+  const thisBuild = buildRun;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+  const cells = [];
+  for (let i = 0; i < order * order; i++) {
+    const d = document.createElement("div");
+    d.className = "tile empty";
+    board.appendChild(d);
+    cells.push(d);
+  }
+  let i = 0;
+  const speed = order <= 5 ? 140 : order <= 7 ? 80 : 45;
+  (function step() {
+    if (thisBuild !== buildRun || !state) return;
+    if (i >= path.length) return;
+    const { row, col, value } = path[i];
+    const idx = row * order + col;
+    cells[idx].className = "tile building";
+    cells[idx].textContent = value;
+    i++;
+    setTimeout(step, speed);
+  })();
+}
+
+async function startPuzzle() {
+  if (state && state.mode === "fill") return startFill();
+  try { state.gameId = (await api.post("/api/game/start", { order: state.order, is_daily: false })).game_id; }
+  catch (err) { alert(err.message); return; }
+  state.current = [...state.scrambled];
+  state.moves = 0;
+  state.hints = 0;
+  state.moveHistory = [];
+  state.selectedIdx = null;
+  state.hintIndices = [];
+  state.pendingHint = null;
+  state.solvedFlag = false;
+  document.getElementById("win-banner").style.display = "none";
+  document.getElementById("export-btn").style.display = "none";
+  document.getElementById("scramble-btn").style.display = "none";
+  document.getElementById("hud").style.display = "flex";
+  document.getElementById("play-controls").style.display = "flex";
+  setHudMode("scramble");
+  document.getElementById("stage-label").textContent = "Tap two tiles to swap them and restore the square";
+  document.getElementById("hud-moves").textContent = "0";
+  document.getElementById("hud-hints").textContent = "0";
+  updateUndoState();
+  updateNextButton();
+  startTimer();
+  renderPuzzle();
+}
+
+function renderPuzzle() {
+  const { order, current, selectedIdx } = state;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+
+  const check = liveCheck();
+
+  for (let idx = 0; idx < current.length; idx++) {
+    const r = Math.floor(idx / order);
+    const c = idx % order;
+    const d = document.createElement("div");
+    d.className = "tile selectable";
+    if (idx === selectedIdx) d.classList.add("selected");
+    if (state.hintIndices.includes(idx)) d.classList.add("hint-changed");
+    if (check.rows[r]) d.classList.add("row-ok");
+    if (check.cols[c]) d.classList.add("col-ok");
+    if (state.solvedFlag) d.classList.add("solved-flash");
+    d.textContent = current[idx];
+    d.addEventListener("click", () => onTileClick(idx));
+    board.appendChild(d);
+  }
+
+  if (state.pendingHint) {
+    // Redraw after the board rebuild so the arrow tracks the new tile positions.
+    requestAnimationFrame(() => drawHintArrow(state.pendingHint[0], state.pendingHint[1]));
+  } else {
+    clearHintArrow();
+  }
+  renderSumLabels();
+}
+
+function liveCheck() {
+  const { order, current, target } = state;
+  const grid = [];
+  for (let r = 0; r < order; r++) grid.push(current.slice(r * order, r * order + order));
+  const rows = grid.map((row) => row.reduce((a, b) => a + b, 0) === target);
+  const cols = [];
+  for (let c = 0; c < order; c++) {
+    let sum = 0;
+    for (let r = 0; r < order; r++) sum += grid[r][c];
+    cols.push(sum === target);
+  }
+  let diagMain = 0, diagAnti = 0;
+  for (let i = 0; i < order; i++) { diagMain += grid[i][i]; diagAnti += grid[i][order - 1 - i]; }
+  return { rows, cols, diagMain: diagMain === target, diagAnti: diagAnti === target };
+}
+
+function renderSumLabels() {
+  if (!state) return;
+  if (state.mode === "fill") return renderFillSumLabels();
+  const { order, target } = state;
+  const check = state.current ? liveCheck() : null;
+  const fontPx = order <= 5 ? 14 : order <= 7 ? 12 : order <= 8 ? 10 : 9;
+
+  const rowWrap = document.getElementById("row-sum-labels");
+  const colWrap = document.getElementById("col-sum-labels");
+  rowWrap.style.setProperty("--label-font", fontPx + "px");
+  colWrap.style.setProperty("--label-font", fontPx + "px");
+  rowWrap.style.gridTemplateRows = `repeat(${order}, 1fr)`;
+  colWrap.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+
+  rowWrap.innerHTML = Array.from({ length: order }).map((_, r) => {
+    const ok = check && check.rows[r];
+    return `<div class="sum-label${ok ? " ok" : ""}">&#8594;${target}</div>`;
+  }).join("");
+  colWrap.innerHTML = Array.from({ length: order }).map((_, c) => {
+    const ok = check && check.cols[c];
+    return `<div class="sum-label${ok ? " ok" : ""}">&#8595;${target}</div>`;
+  }).join("");
+
+  const diagLeft = document.getElementById("diag-left-label");
+  const diagRight = document.getElementById("diag-right-label");
+  diagLeft.style.setProperty("--label-font", fontPx + "px");
+  diagRight.style.setProperty("--label-font", fontPx + "px");
+  diagLeft.innerHTML = `&#8601;<span>${target}</span>`;
+  diagRight.innerHTML = `&#8600;<span>${target}</span>`;
+  diagLeft.classList.toggle("ok", !!(check && check.diagAnti));
+  diagRight.classList.toggle("ok", !!(check && check.diagMain));
+}
+
+function onTileClick(idx) {
+  if (state.solvedFlag) return;
+  if (state.selectedIdx === null) {
+    state.selectedIdx = idx;
+  } else if (state.selectedIdx === idx) {
+    state.selectedIdx = null;
+  } else {
+    swapTiles(state.selectedIdx, idx);
+    state.moveHistory.push([state.selectedIdx, idx]);
+    state.moves++;
+    // A manual swap resolves any pending hint suggestion.
+    state.pendingHint = null;
+    api.post("/api/attempts/progress", { game_id: state.gameId, action: "move" }).catch(() => {});
+    document.getElementById("hud-moves").textContent = state.moves;
+    state.selectedIdx = null;
+    updateUndoState();
+    checkSolved();
+  }
+  renderPuzzle();
+}
+
+function swapTiles(a, b) {
+  const tmp = state.current[a];
+  state.current[a] = state.current[b];
+  state.current[b] = tmp;
+}
+
+function updateUndoState() {
+  document.getElementById("undo-btn").disabled = state.moveHistory.length === 0 || state.solvedFlag;
+}
+
+function nextOrderFor(order) {
+  const index = PLAYABLE_ORDERS.indexOf(order);
+  return index >= 0 ? PLAYABLE_ORDERS[index + 1] || null : null;
+}
+
+function updateNextButton() {
+  const btn = document.getElementById("next-order-btn");
+  const nextOrder = state ? nextOrderFor(state.order) : null;
+  if (!nextOrder) {
+    btn.textContent = "All sizes complete";
+    btn.disabled = true;
+    btn.title = "10×10 is the final available size";
+    return;
+  }
+  btn.textContent = `Next: ${nextOrder}×${nextOrder} →`;
+  btn.disabled = !(state && state.solvedFlag && state.completionSaved);
+  btn.title = btn.disabled
+    ? `Solve and save this ${state ? state.order : ""}×${state ? state.order : ""} square to unlock ${nextOrder}×${nextOrder}`
+    : `Play the ${nextOrder}×${nextOrder} magic square`;
+}
+
+function goToNextOrder() {
+  const nextOrder = state && nextOrderFor(state.order);
+  if (!state || !state.solvedFlag || !state.completionSaved || !nextOrder) return;
+  selectOrder(nextOrder);
+}
+
+function undoMove() {
+  if (!state || state.solvedFlag || state.moveHistory.length === 0) return;
+  const [a, b] = state.moveHistory.pop();
+  swapTiles(a, b); // swapping back reverses the move
+  state.moves = Math.max(0, state.moves - 1);
+  document.getElementById("hud-moves").textContent = state.moves;
+  state.selectedIdx = null;
+  updateUndoState();
+  renderPuzzle();
+}
+
+// Hints POINT at a swap instead of performing it: we find one tile that's
+// wrong and the tile currently holding its correct value, then draw an
+// arrow between them. The player still has to make the swap themselves.
+function useHint() {
+  if (!state || state.solvedFlag) return;
+  const wrongIdx = state.current.findIndex((v, i) => v !== state.solved[i]);
+  if (wrongIdx === -1) return; // already solved
+  const correctValue = state.solved[wrongIdx];
+  const sourceIdx = state.current.indexOf(correctValue);
+  state.hints++;
+  api.post("/api/attempts/progress", { game_id: state.gameId, action: "hint" }).catch(() => {});
+  document.getElementById("hud-hints").textContent = state.hints;
+  // Apply the time penalty by pulling the recorded start time backwards.
+  state.startTime -= HINT_PENALTY_SECONDS * 1000;
+  state.selectedIdx = null;
+  state.hintIndices = [wrongIdx, sourceIdx];
+  state.pendingHint = [sourceIdx, wrongIdx];
+  renderPuzzle();
+  if (hintTimeout) clearTimeout(hintTimeout);
+  hintTimeout = window.setTimeout(() => {
+    if (state && !state.solvedFlag) {
+      state.hintIndices = [];
+      renderPuzzle();
+    }
+  }, 4000);
+}
+
+function tileCenter(idx) {
+  const board = document.getElementById("board");
+  const wrap = document.querySelector(".board-wrap");
+  const tile = board.children[idx];
+  if (!tile) return null;
+  const tr = tile.getBoundingClientRect();
+  const wr = wrap.getBoundingClientRect();
+  return { x: tr.left - wr.left + tr.width / 2, y: tr.top - wr.top + tr.height / 2 };
+}
+
+function drawHintArrow(fromIdx, toIdx) {
+  const svg = document.getElementById("hint-arrow");
+  const a = tileCenter(fromIdx);
+  const b = tileCenter(toIdx);
+  if (!a || !b) { svg.innerHTML = ""; return; }
+  svg.innerHTML = `
+    <defs>
+      <marker id="hint-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="var(--gold)"></path>
+      </marker>
+    </defs>
+    <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
+          stroke="var(--gold)" stroke-width="3" stroke-dasharray="7 5"
+          marker-end="url(#hint-arrowhead)" opacity="0.9">
+      <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.6s" repeatCount="indefinite"></animate>
+    </line>
+  `;
+}
+
+function clearHintArrow() {
+  const svg = document.getElementById("hint-arrow");
+  if (svg) svg.innerHTML = "";
+}
+
+function checkSolved() {
+  const solved = state.current.every((v, i) => v === state.solved[i]);
+  if (solved) {
+    state.solvedFlag = true;
+    state.pendingHint = null;
+    clearHintArrow();
+    stopTimer();
+    updateUndoState();
+    const elapsed = Math.max(0, Math.round((Date.now() - state.startTime) / 1000));
+    document.getElementById("win-banner").style.display = "block";
+    renderResult(elapsed, "Recording your attempt…");
+    document.getElementById("scramble-btn").textContent = "Play again";
+    document.getElementById("scramble-btn").style.display = "inline-flex";
+    document.getElementById("export-btn").style.display = "inline-flex";
+    api.post("/api/attempts", {
+      game_id: state.gameId,
+      grid: state.current,
+    }).then((res) => {
+      let msg = "Attempt saved.";
+      if (res.newly_earned && res.newly_earned.length > 0) {
+        msg += ` New badge${res.newly_earned.length > 1 ? "s" : ""} unlocked — check your Dashboard!`;
+      }
+      renderResult(elapsed, msg);
+      state.completionSaved = true;
+      updateNextButton();
+    }).catch((err) => {
+      renderResult(elapsed, `Could not save attempt: ${err.message}`);
+      updateNextButton();
+    });
+  }
+}
+
+function renderResult(elapsed, status) {
+  document.getElementById("win-banner").innerHTML = `
+    <strong>Square solved!</strong>
+    <div class="result-stats">
+      <span><b>${formatTime(elapsed)}</b> total time</span>
+      <span><b>${state.moves}</b> moves</span>
+      <span><b>${state.hints}</b> total hints</span>
+    </div>
+    <small>${status}</small>
+  `;
+}
+
+function startTimer() {
+  state.startTime = Date.now();
+  state.timerHandle = setInterval(() => {
+    const elapsed = Math.max(0, Math.round((Date.now() - state.startTime) / 1000));
+    document.getElementById("hud-time").textContent = formatTime(elapsed);
+  }, 250);
+}
+function stopTimer() {
+  if (state && state.timerHandle) clearInterval(state.timerHandle);
+}
+
+/* =====================================================================
+   FILL THE SQUARE — the student types the numbers, the app marks them.
+   No live "row is correct" highlighting on purpose: feedback only comes
+   from the Check button, so the 3-attempt limit can't be sidestepped.
+   Attempts are counted on the server (game_sessions.attempts_used).
+   ===================================================================== */
+function setHudMode(m) {
+  const fill = m === "fill";
+  document.getElementById("hud-moves-label").textContent = fill ? "Attempts left" : "Moves";
+  document.getElementById("hud-hints-stat").style.display = fill ? "none" : "";
+  document.getElementById("undo-btn").style.display = fill ? "none" : "";
+  document.getElementById("hint-btn").style.display = fill ? "none" : "";
+}
+
+function setupFill(order) {
+  const total = order * order;
+  const target = MagicSquare.magicConstant(order);
+  state = {
+    mode: "fill", order, target,
+    fill: Array(total).fill(""), lastCheck: null, attemptsLeft: MAX_ATTEMPTS,
+    gameId: null, current: null, selectedIdx: null, hintIndices: [], pendingHint: null,
+    moves: 0, hints: 0, moveHistory: [], startTime: null, timerHandle: null,
+    solvedFlag: false, over: false, completionSaved: false,
+  };
+  document.getElementById("hud-target").textContent = target;
+  document.getElementById("constraint-note").textContent =
+    `Use each number from 1 to ${total} once. Every row, column & diagonal must add up to ${target}`;
+  document.getElementById("stage-label").textContent =
+    `Type the numbers yourself. Once you start, you get ${MAX_ATTEMPTS} attempts.`;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("div");
+    d.className = "tile empty";
+    board.appendChild(d);
+  }
+  const btn = document.getElementById("scramble-btn");
+  btn.textContent = "Start filling";
+  btn.style.display = "inline-flex";
+  renderSumLabels();
+  updateNextButton();
+}
+
+async function startFill() {
+  let res;
+  try {
+    res = await api.post("/api/game/start", { order: state.order, is_daily: false, mode: "fill" });
+  } catch (err) { alert(err.message); return; }
+  const total = state.order * state.order;
+  state.gameId = res.game_id;
+  state.attemptsLeft = res.attempts_left;
+  state.fill = Array(total).fill("");
+  state.lastCheck = null;
+  state.solvedFlag = false; state.over = false; state.completionSaved = false; state.current = null;
+  const banner = document.getElementById("win-banner");
+  banner.style.display = "none"; banner.classList.remove("fail");
+  document.getElementById("export-btn").style.display = "none";
+  document.getElementById("scramble-btn").style.display = "none";
+  document.getElementById("fill-feedback").innerHTML = "";
+  document.getElementById("hud").style.display = "flex";
+  document.getElementById("play-controls").style.display = "flex";
+  document.getElementById("fill-panel").style.display = "block";
+  document.getElementById("check-btn").style.display = "";
+  document.getElementById("clear-btn").style.display = "";
+  setHudMode("fill");
+  document.getElementById("stage-label").textContent = res.resumed
+    ? "Resumed your unfinished round. Attempts you already used still count."
+    : "Type a number in every cell, then press Check.";
+  document.getElementById("hud-time").textContent = "0:00";
+  updateAttemptDisplay();
+  updateNextButton();
+  startTimer();
+  if (res.elapsed) state.startTime = Date.now() - res.elapsed * 1000;
+  renderFillGrid();
+  renderSumLabels();
+}
+
+function updateAttemptDisplay() {
+  document.getElementById("hud-moves").textContent = state.attemptsLeft;
+  const used = MAX_ATTEMPTS - state.attemptsLeft;
+  document.getElementById("attempt-pips").innerHTML = Array.from({ length: MAX_ATTEMPTS })
+    .map((_, i) => `<span class="attempt-pip${i < used ? " used" : ""}" title="${i < used ? "Used" : "Available"}"></span>`).join("");
+}
+
+function renderFillGrid(readOnly = false) {
+  const { order } = state;
+  const total = order * order;
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  board.innerHTML = "";
+  const digits = String(total).length;
+  for (let idx = 0; idx < total; idx++) {
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.inputMode = "numeric";
+    inp.autocomplete = "off";
+    inp.maxLength = digits;
+    inp.className = "tile fill-input";
+    inp.value = state.fill[idx];
+    inp.readOnly = readOnly;
+    inp.setAttribute("aria-label", `Row ${Math.floor(idx / order) + 1}, column ${(idx % order) + 1}`);
+    inp.addEventListener("input", () => {
+      const cleaned = inp.value.replace(/\D/g, "").slice(0, digits);
+      inp.value = cleaned;
+      state.fill[idx] = cleaned;
+      inp.classList.remove("wrong");
+    });
+    inp.addEventListener("keydown", (e) => {
+      const move = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -order, ArrowDown: order, Enter: 1 }[e.key];
+      if (move === undefined) return;
+      const next = board.children[idx + move];
+      if (next) { e.preventDefault(); next.focus(); next.select(); }
+    });
+    inp.addEventListener("focus", () => inp.select());
+    board.appendChild(inp);
+  }
+  if (!readOnly && board.children[0]) board.children[0].focus();
+}
+
+function clearFill() {
+  if (!state || state.mode !== "fill" || state.solvedFlag || state.over) return;
+  state.fill = Array(state.order * state.order).fill("");
+  document.querySelectorAll("#board .fill-input").forEach((i) => { i.value = ""; i.classList.remove("wrong"); });
+  const first = document.querySelector("#board .fill-input");
+  if (first) first.focus();
+}
+
+function feedbackBox(html) { document.getElementById("fill-feedback").innerHTML = html; }
+
+async function checkFill() {
+  if (!state || state.mode !== "fill" || state.solvedFlag || state.over) return;
+  const values = state.fill.map((v) => (v === "" ? 0 : parseInt(v, 10)));
+  if (values.some((v) => !v)) {
+    const left = values.filter((v) => !v).length;
+    feedbackBox(`<p class="fb-warn">${left} cell${left > 1 ? "s are" : " is"} still empty. Fill every cell before checking. This did not use up an attempt.</p>`);
+    return;
+  }
+  const btn = document.getElementById("check-btn");
+  btn.disabled = true;
+  try {
+    const res = await api.post("/api/game/check", { game_id: state.gameId, grid: values });
+    state.lastCheck = res;
+    state.attemptsLeft = res.attempts_left;
+    updateAttemptDisplay();
+    renderSumLabels();
+    markWrongCells(res);
+    if (res.solved) return onFillSolved(res, values);
+    if (res.finished) return onFillFailed(res);
+    const items = res.problems.map((p) => `<p>${escapeHtml(p)}</p>`).join("");
+    feedbackBox(`<p class="fb-title">Not quite. ${res.attempts_left} attempt${res.attempts_left === 1 ? "" : "s"} left.</p>${items}`);
+  } catch (err) {
+    feedbackBox(`<p class="fb-warn">${escapeHtml(err.message)}</p>`);
+  } finally { btn.disabled = false; }
+}
+
+function markWrongCells(res) {
+  const bad = new Set([...(res.duplicates || []), ...(res.out_of_range || [])]);
+  document.querySelectorAll("#board .fill-input").forEach((inp) => {
+    const v = parseInt(inp.value, 10);
+    inp.classList.toggle("wrong", bad.has(v));
+  });
+}
+
+function onFillSolved(res, values) {
+  state.solvedFlag = true;
+  state.completionSaved = true;
+  state.current = values;
+  stopTimer();
+  document.querySelectorAll("#board .fill-input").forEach((i) => { i.readOnly = true; i.classList.add("solved-flash"); });
+  document.getElementById("check-btn").style.display = "none";
+  document.getElementById("clear-btn").style.display = "none";
+  const banner = document.getElementById("win-banner");
+  banner.classList.remove("fail");
+  banner.style.display = "block";
+  const tries = res.attempts_used;
+  const badge = res.newly_earned && res.newly_earned.length
+    ? ` New badge${res.newly_earned.length > 1 ? "s" : ""} unlocked. Check your Dashboard!` : "";
+  banner.innerHTML = `
+    <strong>Correct! You built a magic square.</strong>
+    <div class="result-stats">
+      <span><b>${formatTime(res.time_taken)}</b> total time</span>
+      <span><b>${tries}</b> attempt${tries === 1 ? "" : "s"} used</span>
+    </div>
+    <small>Attempt saved.${badge}</small>`;
+  feedbackBox("");
+  const again = document.getElementById("scramble-btn");
+  again.textContent = "Play again";
+  again.style.display = "inline-flex";
+  document.getElementById("export-btn").style.display = "inline-flex";
+  updateNextButton();
+}
+
+function onFillFailed(res) {
+  state.over = true;
+  stopTimer();
+  // Reveal one valid solution, read-only, like a teacher showing the answer.
+  state.fill = res.solution.map(String);
+  renderFillGrid(true);
+  document.querySelectorAll("#board .fill-input").forEach((i) => i.classList.add("revealed"));
+  document.getElementById("check-btn").style.display = "none";
+  document.getElementById("clear-btn").style.display = "none";
+  feedbackBox("");
+  const banner = document.getElementById("win-banner");
+  banner.classList.add("fail");
+  banner.style.display = "block";
+  banner.innerHTML = `
+    <strong>Out of attempts.</strong>
+    <div class="result-stats"><span>Here is one valid ${state.order}&times;${state.order} square (there is more than one).</span></div>
+    <small>Study how each row, column and diagonal reaches ${state.target}, then try a new round.</small>`;
+  const again = document.getElementById("scramble-btn");
+  again.textContent = "Try a new round";
+  again.style.display = "inline-flex";
+  renderSumLabels();
+}
+
+function renderFillSumLabels() {
+  const { order, target, lastCheck: lc } = state;
+  const fontPx = order <= 5 ? 14 : order <= 7 ? 12 : order <= 8 ? 10 : 9;
+  const rowWrap = document.getElementById("row-sum-labels");
+  const colWrap = document.getElementById("col-sum-labels");
+  rowWrap.style.setProperty("--label-font", fontPx + "px");
+  colWrap.style.setProperty("--label-font", fontPx + "px");
+  rowWrap.style.gridTemplateRows = `repeat(${order}, 1fr)`;
+  colWrap.style.gridTemplateColumns = `repeat(${order}, 1fr)`;
+  const label = (arrow, sum) => sum === undefined
+    ? `<div class="sum-label">${arrow}${target}</div>`
+    : `<div class="sum-label ${sum === target ? "ok" : "bad"}">${arrow}${sum}</div>`;
+  rowWrap.innerHTML = Array.from({ length: order }).map((_, r) => label("&#8594;", lc ? lc.rows[r] : undefined)).join("");
+  colWrap.innerHTML = Array.from({ length: order }).map((_, c) => label("&#8595;", lc ? lc.cols[c] : undefined)).join("");
+  const diagLeft = document.getElementById("diag-left-label");
+  const diagRight = document.getElementById("diag-right-label");
+  diagLeft.style.setProperty("--label-font", fontPx + "px");
+  diagRight.style.setProperty("--label-font", fontPx + "px");
+  diagLeft.innerHTML = `&#8601;<span>${lc ? lc.diag_anti : target}</span>`;
+  diagRight.innerHTML = `&#8600;<span>${lc ? lc.diag_main : target}</span>`;
+  diagLeft.classList.toggle("ok", !!lc && lc.diag_anti === target);
+  diagLeft.classList.toggle("bad", !!lc && lc.diag_anti !== target);
+  diagRight.classList.toggle("ok", !!lc && lc.diag_main === target);
+  diagRight.classList.toggle("bad", !!lc && lc.diag_main !== target);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function exportImage() {
+  if (!state) return;
+  const order = state.order;
+  const cellSize = 70;
+  const pad = 24;
+  const size = order * cellSize + pad * 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size + 40;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#f8fbff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let r = 0; r < order; r++) {
+    for (let c = 0; c < order; c++) {
+      const idx = r * order + c;
+      const x = pad + c * cellSize;
+      const y = pad + r * cellSize;
+      ctx.fillStyle = "#2563eb";
+      ctx.strokeStyle = "#c9dcf7";
+      ctx.lineWidth = 2;
+      const rectSize = cellSize - 6;
+      roundRect(ctx, x, y, rectSize, rectSize, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "600 22px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(state.current[idx], x + rectSize / 2, y + rectSize / 2);
+    }
+  }
+  ctx.fillStyle = "#64748b";
+  ctx.font = "13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`Ramanujan's Magic Square \u2014 ${order}\u00d7${order}, constant ${state.target}`, size / 2, size + 24);
+
+  const link = document.createElement("a");
+  link.download = `magic-square-${order}x${order}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+boot();
+</script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard &middot; Ramanujan's Magic Square</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-links">
+    <a href="/game.html" data-path="game">Play</a>
+    <a href="/daily.html" data-path="daily">Daily Challenge</a>
+    <a href="/manual.html" data-path="manual">Manual</a>
+    <a href="/dashboard.html" data-path="dashboard">Dashboard</a>
+    <a href="/leaderboard.html" data-path="leaderboard" class="active">Leaderboard</a>
+    <a href="/formula.html" data-path="formula">Formula</a>
+    <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
+    <a class="nav-user" href="/profile.html" id="nav-user"></a>
+    <button class="btn-ghost" id="logout-btn" style="display:none;">Log out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow">Fastest solves, across every account</div>
+  <h2>Global leaderboard</h2>
+
+  <div class="order-picker" id="order-picker"></div>
+
+  <div class="card">
+    <div id="board-wrap"></div>
+  </div>
+</main>
+
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
+
+<script src="/js/api.js"></script>
+<script src="/js/magicSquare.js"></script>
+<script>
+async function boot() {
+  try {
+    const me = await api.get("/api/auth/me");
+    document.getElementById("nav-user").textContent = me.username;
+    document.getElementById("logout-btn").style.display = "inline-flex";
+    if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+    initNav("leaderboard");
+  } catch (e) {
+    // Leaderboard is viewable while logged out.
+  }
+
+  buildOrderPicker();
+  loadOrder(3);
+}
+
+function buildOrderPicker() {
+  const wrap = document.getElementById("order-picker");
+  wrap.innerHTML = MagicSquare.DISPLAY_ORDERS.map((o) => {
+    const possible = MagicSquare.isPossible(o);
+    const label = possible ? `${o}&times;${o} &middot; &Sigma;${MagicSquare.magicConstant(o)}` : `${o}&times;${o} &middot; n/a`;
+    return `<button class="order-btn${possible ? "" : " impossible"}" data-order="${o}">${label}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".order-btn").forEach((btn) => {
+    btn.addEventListener("click", () => loadOrder(parseInt(btn.dataset.order, 10)));
+  });
+}
+
+async function loadOrder(order) {
+  document.querySelectorAll(".order-btn").forEach((b) => {
+    b.classList.toggle("active", parseInt(b.dataset.order, 10) === order);
+  });
+  const wrap = document.getElementById("board-wrap");
+  if (!MagicSquare.isPossible(order)) {
+    wrap.innerHTML = `<div class="empty-state">A ${order}\u00d7${order} magic square isn't mathematically possible, so there's no leaderboard for it.</div>`;
+    return;
+  }
+  const rows = await api.get(`/api/leaderboard/${order}`);
+  if (rows.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">No solves recorded yet for ${order} &times; ${order}. Be the first.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>#</th><th>Player</th><th>Time</th><th>Moves</th><th>Date</th></tr></thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr>
+            <td class="rank">${i + 1}</td>
+            <td>${escapeHtml(r.username)}</td>
+            <td class="mono">${formatTime(r.time_taken)}</td>
+            <td class="mono">${r.moves_made}</td>
+            <td>${formatDate(r.date_attempted)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+boot();
+</script>
+<script src="/js/companion.js"></script>
+<script src="/js/theme.js"></script>
+</body>
+</html>
