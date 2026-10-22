@@ -9,7 +9,7 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open `http://localhost:3000`. Set `SESSION_SECRET` for deployment. Set `ADMIN_USERNAME` before registering the first administrator. Optional `OPENAI_API_KEY` enables AI chat, screenshot understanding and model-based moderation; `OPENAI_MODEL` can select the model. Never expose this key in browser code.
+Open `http://localhost:3000`. Set `SESSION_SECRET` to a long random value for deployment, and set `ADMIN_USERNAME` before registering the first administrator. The in-app companion uses curated rule-based responses and does not require an AI service or API key. Accounts and game progress are stored in SQLite under `DATA_DIR` (default: `data/`). Use a shared persistent `DATA_DIR` when deploying so players can sign in from different devices and retain their progress.
 
 ## Gaming companion
 

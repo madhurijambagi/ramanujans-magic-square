@@ -40,6 +40,17 @@
     <div id="badges-wrap" class="summary-cards" style="margin-bottom:0;"></div>
   </div>
 
+  <dialog class="all-badges-dialog" id="all-badges-dialog" aria-labelledby="all-badges-title">
+    <div class="all-badges-mark" aria-hidden="true">✦</div>
+    <h2 id="all-badges-title">Congratulations, you have completed all the badges.</h2>
+    <p>Your puzzle run is complete. Choose where to head next.</p>
+    <div class="all-badges-actions">
+      <a class="btn-secondary" href="/">Home</a>
+      <a class="btn" href="/game.html">Play</a>
+      <button class="btn-ghost" type="button" id="badges-restart">Restart</button>
+    </div>
+  </dialog>
+
   <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
     <div>
       <h3 style="margin-bottom:0.2rem;">Try Ramanujan's birthday trick</h3>
@@ -103,6 +114,13 @@ function renderBadges(badges) {
       <div class="badge-desc">${b.description}</div>
     </div>
   `).join("");
+  if (badges.length && badges.every((badge) => badge.earned)) {
+    const celebrationKey = `squareverse-all-badges-${document.getElementById("nav-user").textContent}`;
+    if (!sessionStorage.getItem(celebrationKey)) {
+      document.getElementById("all-badges-dialog").showModal();
+      sessionStorage.setItem(celebrationKey, "shown");
+    }
+  }
 }
 
 function renderSummary(best) {
@@ -141,6 +159,7 @@ function renderHistory(history) {
 }
 
 boot();
+document.getElementById("badges-restart").addEventListener("click", () => window.location.reload());
 </script>
 <script src="/js/companion.js"></script>
 <script src="/js/theme.js"></script>

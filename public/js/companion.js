@@ -6,14 +6,14 @@
     <div class="companion-backdrop" hidden>
       <section class="companion-panel" id="companion-panel" role="dialog" aria-modal="true" aria-label="MagicSquare chat" hidden>
         <header><div><strong>SquareVerse</strong><small id="companion-mode">MagicSquare and gaming help</small></div><button type="button" class="companion-close" aria-label="Close chat">×</button></header>
-        <div class="companion-options"><select id="companion-game" aria-label="Game"><option>Ramanujan's Magic Square</option></select><select id="companion-language" aria-label="Reply language"><option value="en">English</option><option value="hi">हिन्दी</option><option value="kn">ಕನ್ನಡ</option></select></div>
+        <div class="companion-options"><select id="companion-game" aria-label="Game"><option>Ramanujan's Magic Square</option></select><select id="companion-language" aria-label="Input language"><option value="en">English</option><option value="kn">ಕನ್ನಡ voice input · English replies</option></select></div>
         <div class="companion-log" id="companion-log" role="log" aria-live="polite"></div><div class="companion-status" id="companion-status" role="status"></div>
         <form class="companion-form" id="companion-form"><textarea id="companion-input" maxlength="500" rows="2" placeholder="Ask about MagicSquare or gaming…" aria-label="Message"></textarea><div><button type="button" id="companion-mic" aria-label="Open voice chat">🎙 Voice</button><button type="submit" class="btn">Send</button></div></form>
         <div class="companion-footer"><span>Keep personal information private.</span><button type="button" id="companion-clear">Clear history</button></div>
       </section>
       <section class="voice-panel" id="voice-panel" role="dialog" aria-modal="true" aria-label="Voice chat" hidden>
         <header><div><strong>Voice chat</strong><small>Ask about MagicSquare or gaming</small></div><button type="button" id="voice-close" aria-label="Close voice chat">×</button></header>
-        <label>Voice<select id="voice-gender"><option value="female">Female</option><option value="male">Male</option></select></label>
+        <label>Voice<select id="voice-gender"><option value="female">Female voice</option><option value="male">Male voice</option></select></label>
         <div id="voice-status" role="status">Choose a voice, then tap the microphone.</div>
         <button type="button" id="voice-listen" class="voice-mic" aria-label="Start voice chat">🎙</button>
       </section>
@@ -34,7 +34,7 @@
   let listening = false;
   let sentUtterance = false;
   let languageManuallyChosen = false;
-  language.value = localStorage.getItem("squareverse-chat-language") || "en";
+  language.value = localStorage.getItem("squareverse-chat-language") === "kn" ? "kn" : "en";
 
   function setOpen(which) {
     const open = Boolean(which);
@@ -64,7 +64,20 @@
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = suggestion.label || suggestion;
-        button.addEventListener("click", () => send(suggestion.question || suggestion, voiceMode));
+        button.addEventListener("click", () => {
+          const label = suggestion.label || suggestion;
+          const shortcuts = {
+            "How to play": "How do I play Swap puzzle?",
+            "Daily Challenge": "How does the Daily Challenge work?",
+            "Hints": "How do hints work?",
+            "Odd sizes": "Explain the Siamese method for odd magic square sizes",
+            "Divisible by 4": "Explain the construction method for 4x4 and 8x8 squares",
+            "6 and 10": "Explain the Strachey method for 6x6 and 10x10 squares",
+            "English": "Change chat language to English",
+            "ಕನ್ನಡ": "Change chat language to Kannada",
+          };
+          send(suggestion.question || shortcuts[label] || label, voiceMode);
+        });
         chips.appendChild(button);
       });
       item.appendChild(chips);
@@ -94,7 +107,8 @@
   function snapshot() {
     if (typeof state === "undefined" || !state) return {};
     return { order: state.order, mode: state.mode || "scramble", moves: state.moves || 0,
-      hints: state.hints || 0, status: state.solvedFlag ? "completed" : state.startTime ? "in_progress" : "ready" };
+      hints: state.hints || 0, grid: Array.isArray(state.current) ? state.current : null,
+      status: state.solvedFlag ? "completed" : state.startTime ? "in_progress" : "ready" };
   }
 
   async function loadHistory() {
@@ -112,13 +126,13 @@
     }
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = { en: "en-IN", hi: "hi-IN", kn: "kn-IN" }[lang] || "en-IN";
+    utterance.lang = "en-IN";
     utterance.rate = 0.92;
     utterance.pitch = $("#voice-gender").value === "female" ? 1.05 : 0.92;
     const voices = speechSynthesis.getVoices();
     const wanted = $("#voice-gender").value === "male"
-      ? /(male|man|ravi|amit|arjun|hemant|google हिन्दी)/i
-      : /(female|woman|priya|aditi|heera|lekha|sangeeta)/i;
+      ? /(male|man|david|mark|daniel|james|microsoft guy)/i
+      : /(female|woman|zira|aria|jenny|susan|samantha)/i;
     const matchingLanguage = voices.filter((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2)));
     utterance.voice = matchingLanguage.find((voice) => wanted.test(voice.name)) || matchingLanguage[0] || null;
     speechSynthesis.speak(utterance);
@@ -140,7 +154,7 @@
         localStorage.setItem("squareverse-chat-language", result.language);
       }
       addMessage(result.answer, "assistant", result.assistant_message_id, result.suggestions || []);
-      status.textContent = result.ai ? "AI companion" : "MagicSquare guide";
+      status.textContent = "Curated MagicSquare guide";
       $("#voice-status").textContent = "Reply ready. Tap the microphone to ask another question.";
       if (voice) speak(result.answer, result.speech_language || result.language || language.value);
     } catch (error) {
@@ -173,7 +187,7 @@
     sentUtterance = false;
     const utterance = new SpeechRecognition();
     recognition = utterance;
-    utterance.lang = { en: "en-IN", hi: "hi-IN", kn: "kn-IN" }[language.value];
+    utterance.lang = language.value === "kn" ? "kn-IN" : "en-IN";
     utterance.continuous = false;
     utterance.interimResults = false;
     utterance.maxAlternatives = 1;
@@ -236,11 +250,9 @@
   });
   api.get("/api/auth/me").then((me) => {
     if (me.chatbot_language && !languageManuallyChosen) {
-      language.value = me.chatbot_language;
-      localStorage.setItem("squareverse-chat-language", me.chatbot_language);
+      language.value = me.chatbot_language === "kn" ? "kn" : "en";
+      localStorage.setItem("squareverse-chat-language", language.value);
     }
   }).catch(() => {});
-  api.get("/api/chatbot/status").then((result) => {
-    $("#companion-mode").textContent = result.ai_enabled ? `AI enabled · ${result.model}` : "Local MagicSquare guide";
-  }).catch(() => {});
+  $("#companion-mode").textContent = "Curated MagicSquare guide";
 })();
