@@ -13,8 +13,7 @@
       </section>
       <section class="voice-panel" id="voice-panel" role="dialog" aria-modal="true" aria-label="Voice chat" hidden>
         <header><div><strong>Voice chat</strong><small>Ask about MagicSquare or gaming</small></div><button type="button" id="voice-close" aria-label="Close voice chat">×</button></header>
-        <label>Voice<select id="voice-gender"><option value="female">Female voice</option><option value="male">Male voice</option></select></label>
-        <div id="voice-status" role="status">Choose a voice, then tap the microphone.</div>
+        <div id="voice-status" role="status">Tap the microphone to start speaking. Replies use the available male voice.</div>
         <button type="button" id="voice-listen" class="voice-mic" aria-label="Start voice chat">🎙</button>
       </section>
     </div>`;
@@ -128,17 +127,15 @@
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-IN";
     utterance.rate = 0.92;
-    utterance.pitch = $("#voice-gender").value === "female" ? 1.05 : 0.92;
+    utterance.pitch = 0.92;
     const voices = speechSynthesis.getVoices();
-    const wanted = $("#voice-gender").value === "male"
-      ? /(male|man|david|mark|daniel|james|microsoft guy)/i
-      : /(female|woman|zira|aria|jenny|susan|samantha)/i;
+    const wanted = /(male|man|david|mark|daniel|james|guy)/i;
     const matchingLanguage = voices.filter((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2)));
     utterance.voice = matchingLanguage.find((voice) => wanted.test(voice.name)) || matchingLanguage[0] || null;
     speechSynthesis.speak(utterance);
   }
 
-  async function send(question, voice = false, voiceGender = $("#voice-gender").value) {
+  async function send(question, voice = false) {
     const cleanQuestion = String(question || "").trim();
     if (!cleanQuestion) return;
     addMessage(cleanQuestion, "user");
@@ -147,7 +144,7 @@
     try {
       const result = await api.post("/api/chatbot", {
         question: cleanQuestion, game_title: $("#companion-game").value,
-        language: language.value, game_context: snapshot(), voice_mode: voice, voice_gender: voiceGender
+        language: language.value, game_context: snapshot(), voice_mode: voice
       });
       if (result.language) {
         language.value = result.language;

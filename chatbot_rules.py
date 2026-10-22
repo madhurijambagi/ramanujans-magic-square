@@ -86,6 +86,24 @@ def answer_for(question, username="there", context=None):
         if 3 <= n <= 10:
             return _entry(f"For a {n}×{n} square, the target is {n}({n}² + 1) / 2 = {n * (n * n + 1) // 2}.") + (True,)
     rules = [
+        (r"what is this website|what does this website do|what is magic.?square website|what is squareverse game|about (?:this|the) (?:website|site|project)|website about|site about", "MagicSquare is an online puzzle game about building normal magic squares. Play Swap or Fill puzzles, try the Daily Challenge, learn construction methods on Formula, and track your times, streaks and badges on Dashboard."),
+        (r"tech stack|what (?:is|are) (?:this )?(?:website|site|project) built with|what technology|backend|frontend technology", "The site uses Python with Flask on the backend, a browser frontend built with HTML, CSS and JavaScript, and SQLite for account and game data."),
+        (r"what pages|which pages|where can i find|site navigation|website features|what features|features of (?:this|the) (?:site|website|game)", "The site includes Play for Swap puzzles, Daily Challenge, Manual practice, Dashboard for progress and badges, Leaderboard, Formula for magic-square methods and date squares, and Profile for account settings and data export."),
+        (r"play page|where do i play|start (?:a )?game|start playing", "Open Play to choose a board size and start a Swap puzzle. Use Daily Challenge for today's shared puzzle, or Manual for unscored practice."),
+        (r"dashboard page|what is on (?:the )?dashboard|dashboard show|where.*badges", "Dashboard shows your best times by size, attempt history, progress, daily streak and earned badges. Sign in to save and view your account progress."),
+        (r"profile page|profile settings|manage my account|account settings", "Profile lets you manage your email and password, export account data as CSV, and delete your account. Never share your password in chat."),
+        (r"what (?:does )?(?:the )?(?:site|website) store|what data.{0,20}store|data does the site store|store about me", "For signed-in accounts the site stores your username and password hash, optional email, puzzle attempts, achievements, daily streak and saved chatbot conversation. Passwords are stored as hashes, not plain text. Your date of birth for the Formula square is not stored."),
+        (r"change.*theme|website theme|color theme|theme choice|theme settings|how do themes work|what themes", "Use Change theme in the navigation to choose a color palette. Your choice is saved in this browser and applied across the site's pages."),
+        (r"how.*play.{0,20}(?:\d+\s*[x×]\s*\d+|size)|play.{0,12}(?:\d+\s*[x×]\s*\d+)", "Open Play, choose an unlocked size such as 3×3, then start the Swap puzzle. The goal is to restore the square so every row, column and main diagonal reaches the target sum."),
+        (r"admin page|admin dashboard|administrator|manage users|review.*chatbot", "The Admin page is available only to authorized admin accounts. It provides site administration tools, including review of chatbot feedback and reports."),
+        (r"does.*multiplayer|multiplayer|play with friends|team play|matchmaking", "MagicSquare is currently a single-player puzzle game. Players can compare results on the leaderboard; live matchmaking and team coordination are not available."),
+        (r"where.*(attempt|solve) history|attempt history|past games|previous games", "Open Dashboard and scroll to Attempt history to review saved puzzle results. You need to be signed in for results to be associated with your account."),
+        (r"how.*(save|saved)|save my progress|progress saved|without account|guest", "Sign in before playing to save attempts, achievements and streak progress to your account. Guest play may not persist account progress."),
+        (r"what is manual|manual practice|practice mode", "Manual is an unscored practice page where you can enter a grid and check its rows, columns and diagonals without recording a competitive result."),
+        (r"what is fill|fill mode|fill the square", "Fill mode starts with an empty grid. Enter each value from 1 to n² once, then check your square. You have three checks for the round."),
+        (r"what is swap|swap mode|swap puzzle mode", "Swap mode gives you a scrambled valid square. Select two tiles to swap them until the rows, columns and diagonals match the target."),
+        (r"what is daily challenge|daily challenge is|daily puzzle", "Daily Challenge is a shared Swap puzzle that changes at midnight UTC. Solve available sizes in order to build your daily streak."),
+        (r"magic square.*website|website.*magic square|magic square game", "MagicSquare is the site's puzzle: place each number from 1 through n² once so every row, column and both main diagonals have the same sum. You can play sizes 3×3 through 10×10."),
         (r"(?:what is|define|explain|meaning of).{0,18}magic square|magic square.{0,12}(?:mean|definition)", "A grid of different numbers arranged so that every row, column and both main diagonals add up to the same total. In this game you use the numbers 1 to n² exactly once."),
         (r"what is squareverse|what is ramanujan'?s magic square|ramanujan'?s magic square", "SquareVerse is a puzzle game based on Ramanujan's Magic Square. Arrange the numbers so each row, column and main diagonal reaches the same target sum."),
         (r"who was ramanujan.{0,25}(?:greatest|bio|born|formal|series)|full bio", "Srinivasa Ramanujan (1887-1920) was one of India's greatest mathematicians. Born in Erode, Tamil Nadu, he had almost no formal training in advanced mathematics, yet he discovered thousands of results on infinite series, number theory and continued fractions, mostly working on his own."),
@@ -161,7 +179,7 @@ def answer_for(question, username="there", context=None):
         (r"download.*data|export.*data", "On the Profile page, press 'Download account data (CSV)'."),
         (r"delete.*account", "On the Profile page, press 'Delete my account' and confirm with your password. This permanently removes your attempts and achievements."),
         (r"chat language|reply in kannada|change.*kannada|kannada", "This chat's answers are provided in English. You can choose ಕನ್ನಡ in the language selector to recognize Kannada voice input."),
-        (r"voice chat|use voice|voice button|microphone", "Open the MagicSquare companion and tap Voice, choose a male or female voice, then tap the microphone and speak. The browser transcribes your question and reads the reply aloud."),
+        (r"voice chat|use voice|voice button|microphone", "Open the MagicSquare companion, tap Voice, then tap the microphone and speak. The browser transcribes your question and reads the reply aloud using the available male voice."),
         (r"does.{0,15}(?:chatbot|companion).{0,15}ai|is.{0,15}(?:chatbot|companion).{0,15}ai|rule based|rule-based", "The MagicSquare companion is rule-based. It matches questions to curated answers and does not send your messages to an AI service."),
         (r"screenshot|send a screenshot|image analysis", "Screenshot analysis is not available in this rule-based chat."),
         (r"remember.*history|chat history|clear history", "For logged-in users, chat history is saved. Use the 'Clear history' button to remove it."),
@@ -179,9 +197,13 @@ def answer_for(question, username="there", context=None):
     # Short direct topic requests also resolve to useful curated answers.
     if re.fullmatch(r"how to play|help with account|account help", compact):
         return _entry("The finished square is shown, then scrambled. Tap two tiles to swap them. Keep swapping until every row, column and diagonal reaches the target.") + (True,)
-    scope_words = r"magic square|squareverse|ramanujan|game|gaming|puzzle|daily|challenge|leaderboard|badge|achievement|hint|fill mode|swap|manual|board|grid|account|login|password|email|progress|streak|timer|time|formula|constant|square|chat language|kannada|screenshot|install|theme|score|stats|statistic|record|attempt|solve|next|ಮ್ಯಾಜಿಕ್|ಆಟ|ಒಗಟು|ಸವಾಲು|ಸುಳಿವು|ನಿಯಮ|ಪ್ರಗತಿ|ಲೀಡರ್‌ಬೋರ್ಡ್"
+    # Broadly recognize site and puzzle terms so a related question gets a
+    # useful orientation response instead of an unrelated-topic refusal.
+    scope_words = r"magic square|squareverse|ramanujan|game|gaming|puzzle|daily|challenge|leaderboard|badge|achievement|hint|fill mode|swap|manual|board|grid|account|login|password|email|profile|dashboard|progress|streak|timer|time|formula|constant|square|website|web site|site|page|feature|chat language|kannada|screenshot|install|run locally|theme|score|stats|statistic|record|attempt|solve|next|admin|browser|data|support|help|\b\d+\s*[x×]\s*\d+|size|ಮ್ಯಾಜಿಕ್|ಆಟ|ಒಗಟು|ಸವಾಲು|ಸುಳಿವು|ನಿಯಮ|ಪ್ರಗತಿ|ಲೀಡರ್‌ಬೋರ್ಡ್"
     in_scope = bool(re.search(scope_words, text, re.I))
     if in_scope:
+        if re.search(r"magic square|squareverse|ramanujan|website|web site|\bsite\b|\bgame\b|\bpuzzle\b", text, re.I):
+            return _entry("MagicSquare is a puzzle game based on normal magic squares. Use each number from 1 to n² once so every row, column and main diagonal has the same sum. This site offers Swap, Fill and Manual play, a Daily Challenge, construction guides, a progress dashboard, badges, leaderboards and account tools. Which part would you like help with?", ["How to play", "Magic constant", "Daily Challenge", "Dashboard"] ) + (True,)
         return _entry(FALLBACK, FALLBACK_CHIPS) + (True,)
     return _entry(OFF_TOPIC) + (False,)
 
