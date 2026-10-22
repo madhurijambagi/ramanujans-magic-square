@@ -71,10 +71,12 @@ button, input, select {
   backdrop-filter: blur(18px);
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 40;
+  overflow: visible;
 }
 
 .nav-brand {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -99,6 +101,18 @@ button, input, select {
 .nav-links a { color: var(--muted); font-weight: 500; font-size: 0.92rem; }
 .nav-links a.active, .nav-links a:hover { color: var(--text); text-decoration: none; }
 .nav-user { color: var(--muted); font-size: 0.85rem; font-family: var(--font-mono); }
+.menu-toggle { width: 30px; height: 30px; padding: 5px 3px; display: inline-flex; flex-direction: column; justify-content: center; gap: 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.menu-toggle:hover { background: var(--surface-raised); }
+.menu-toggle span { display: block; width: 22px; height: 2px; border-radius: 2px; background: var(--gold); }
+.site-menu { position: absolute; z-index: 60; top: calc(100% + 1.35rem); left: 0; width: min(280px, calc(100vw - 2rem)); padding: .5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 40px #11182730; }
+.site-menu[hidden] { display: none; }
+.site-menu-list { display: grid; gap: .15rem; }
+.site-menu-list > a, .site-menu-item { display: block; width: 100%; padding: .72rem .8rem; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; font: inherit; font-size: .92rem; cursor: pointer; }
+.site-menu-list > a:hover, .site-menu-item:hover { background: var(--surface-raised); color: var(--gold); text-decoration: none; }
+.site-menu-theme { border-top: 1px solid var(--border); margin-top: .35rem; padding-top: .35rem; }
+.site-menu .theme-switcher { display: block; }
+.site-menu .theme-switcher label:not([hidden]) { position: static; display: flex; margin: .25rem .4rem .4rem; white-space: normal; box-shadow: none; }
+.site-menu .theme-switcher select { min-width: 0; width: 100%; }
 .btn-ghost {
   background: #ffffff;
   border: 1px solid var(--border);

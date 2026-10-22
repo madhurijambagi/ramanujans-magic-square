@@ -18,43 +18,72 @@
     cobalt: { label: "Cobalt Rush", bg: "#071226", alt: "#0d1d39", surface: "#14294b", raised: "#1d3962", border: "#345b8b", accent: "#5c9dff", accent2: "#3478ef", teal: "#51e0cf", text: "#eaf3ff", muted: "#a7bdd8", glow: "rgba(52,120,239,.22)" }
   };
   const root = document.documentElement;
-  const saved = localStorage.getItem("squareverse-theme");
+  let picker;
   function applyTheme(name) {
-    const theme = themes[name] || themes.blue;
-    root.dataset.theme = name in themes ? name : "blue";
-    root.style.setProperty("--bg", theme.bg);
-    root.style.setProperty("--bg-alt", theme.alt);
-    root.style.setProperty("--surface", theme.surface);
-    root.style.setProperty("--surface-raised", theme.raised);
-    root.style.setProperty("--border", theme.border);
-    root.style.setProperty("--gold", theme.accent);
-    root.style.setProperty("--gold-dim", theme.accent2);
-    root.style.setProperty("--teal", theme.teal);
-    root.style.setProperty("--text", theme.text);
-    root.style.setProperty("--muted", theme.muted);
-    root.style.setProperty("--theme-glow", theme.glow);
-    root.style.setProperty("--landing-ink", theme.text);
-    root.style.setProperty("--landing-sub", theme.muted);
-    root.style.setProperty("--landing-accent", theme.accent);
-    root.style.setProperty("--landing-accent-secondary", theme.teal);
-    localStorage.setItem("squareverse-theme", name in themes ? name : "blue");
-    picker.value = name in themes ? name : "blue";
+    const key = name in themes ? name : "blue", theme = themes[key];
+    root.dataset.theme = key;
+    const variables = { "--bg": theme.bg, "--bg-alt": theme.alt, "--surface": theme.surface, "--surface-raised": theme.raised,
+      "--border": theme.border, "--gold": theme.accent, "--gold-dim": theme.accent2, "--teal": theme.teal,
+      "--text": theme.text, "--muted": theme.muted, "--theme-glow": theme.glow, "--landing-ink": theme.text,
+      "--landing-sub": theme.muted, "--landing-accent": theme.accent, "--landing-accent-secondary": theme.teal };
+    Object.entries(variables).forEach(([property, value]) => root.style.setProperty(property, value));
+    localStorage.setItem("squareverse-theme", key);
+    if (picker) picker.value = key;
   }
 
-  const section = document.createElement("section");
-  section.className = "theme-switcher";
-  section.innerHTML = '<button type="button" class="btn-ghost" aria-expanded="false">Change theme</button><label hidden>Color theme <select aria-label="Choose a website color theme"></select></label>';
-  const button = section.querySelector("button");
-  const label = section.querySelector("label");
-  const picker = section.querySelector("select");
-  Object.entries(themes).forEach(([value, theme]) => picker.add(new Option(theme.label, value)));
-  button.addEventListener("click", () => {
-    label.hidden = !label.hidden;
-    button.setAttribute("aria-expanded", String(!label.hidden));
-    if (!label.hidden) picker.focus();
-  });
-  picker.addEventListener("change", () => applyTheme(picker.value));
-  const logout = document.getElementById("logout-btn");
-  if (logout && logout.parentElement) logout.parentElement.insertBefore(section, logout);
-  applyTheme(saved || "blue");
+  const nav = document.querySelector(".nav");
+  const brand = nav && nav.querySelector(".nav-brand");
+  if (nav && brand) {
+    const oldGlyph = brand.querySelector(".glyph");
+    let toggle = brand.querySelector(".menu-toggle");
+    if (!toggle) {
+      toggle = document.createElement("button");
+      toggle.type = "button"; toggle.className = "menu-toggle"; toggle.setAttribute("aria-label", "Open navigation menu");
+      toggle.setAttribute("aria-expanded", "false"); toggle.innerHTML = "<span></span><span></span><span></span>";
+      if (oldGlyph) oldGlyph.replaceWith(toggle); else brand.prepend(toggle);
+    }
+    const menu = document.createElement("div"); menu.className = "site-menu"; menu.hidden = true;
+    menu.setAttribute("aria-label", "Site navigation");
+    const list = document.createElement("div"); list.className = "site-menu-list";
+    menu.appendChild(list); brand.appendChild(menu);
+    const navLinks = nav.querySelector(".nav-links");
+    const menuItems = [["/game.html", "Play", "game"], ["/daily.html", "Daily Challenge", "daily"],
+      ["/manual.html", "Manual", "manual"], ["/dashboard.html", "Dashboard", "dashboard"],
+      ["/leaderboard.html", "Leaderboard", "leaderboard"], ["/formula.html", "Formula", "formula"]];
+    const existingLinks = new Map();
+    if (navLinks) [...navLinks.querySelectorAll("a")].forEach((link) => {
+      const path = new URL(link.href, location.href).pathname;
+      if (menuItems.some(([href]) => href === path)) existingLinks.set(path, link);
+    });
+    menuItems.forEach(([href, label, path]) => {
+      const link = existingLinks.get(href) || Object.assign(document.createElement("a"), { href, textContent: label });
+      if (!link.hasAttribute("data-path")) link.dataset.path = path;
+      list.appendChild(link);
+    });
+    toggle.addEventListener("click", () => {
+      menu.hidden = !menu.hidden;
+      toggle.setAttribute("aria-expanded", String(!menu.hidden));
+      toggle.setAttribute("aria-label", menu.hidden ? "Open navigation menu" : "Close navigation menu");
+    });
+    document.addEventListener("click", (event) => {
+      if (!menu.hidden && !menu.contains(event.target) && !toggle.contains(event.target)) {
+        menu.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.setAttribute("aria-label", "Open navigation menu");
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !menu.hidden) { menu.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); }
+    });
+    list.addEventListener("click", (event) => {
+      if (event.target.closest("a")) { menu.hidden = true; toggle.setAttribute("aria-expanded", "false"); }
+    });
+    const themeItem = document.createElement("div"); themeItem.className = "site-menu-theme";
+    const section = document.createElement("section"); section.className = "theme-switcher";
+    section.innerHTML = '<button type="button" class="site-menu-item" aria-expanded="false">Change Theme</button><label hidden>Color theme <select aria-label="Choose a website color theme"></select></label>';
+    const button = section.querySelector("button"), label = section.querySelector("label"); picker = section.querySelector("select");
+    Object.entries(themes).forEach(([value, theme]) => picker.add(new Option(theme.label, value)));
+    button.addEventListener("click", () => { label.hidden = !label.hidden; button.setAttribute("aria-expanded", String(!label.hidden)); if (!label.hidden) picker.focus(); });
+    picker.addEventListener("change", () => applyTheme(picker.value));
+    themeItem.appendChild(section); list.appendChild(themeItem);
+  }
+  applyTheme(localStorage.getItem("squareverse-theme") || "blue");
 })();

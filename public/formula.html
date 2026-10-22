@@ -9,7 +9,7 @@
 <body class="formula-page">
 
 <nav class="nav">
-  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-brand"><button type="button" class="menu-toggle" aria-label="Open navigation menu" aria-expanded="false"><span></span><span></span><span></span></button> Ramanujan's Magic Square</div>
   <div class="nav-links">
     <a href="/game.html" data-path="game">Play</a>
     <a href="/daily.html" data-path="daily">Daily Challenge</a>
@@ -19,7 +19,6 @@
     <a href="/formula.html" data-path="formula" class="active">Formula</a>
     <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
     <a class="nav-user" href="/profile.html" id="nav-user"></a>
-    <button class="btn-ghost" id="logout-btn" style="display:none;">Log out</button>
   </div>
 </nav>
 
@@ -84,8 +83,7 @@ CC + 1  YY - 1  DD + 1  MM - 1</pre>
 (async () => {
   try {
     const me = await api.get("/api/auth/me");
-    document.getElementById("nav-user").textContent = me.username;
-    document.getElementById("logout-btn").style.display = "inline-flex";
+    document.getElementById("nav-user").textContent = 'Profile';
     if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
     initNav("formula");
   } catch (e) { /* viewable while logged out */ }

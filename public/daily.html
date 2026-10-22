@@ -9,7 +9,7 @@
 <body>
 
 <nav class="nav">
-  <div class="nav-brand"><span class="glyph">15</span> Ramanujan's Magic Square</div>
+  <div class="nav-brand"><button type="button" class="menu-toggle" aria-label="Open navigation menu" aria-expanded="false"><span></span><span></span><span></span></button> Ramanujan's Magic Square</div>
   <div class="nav-links">
     <a href="/game.html" data-path="game">Play</a>
     <a href="/daily.html" data-path="daily" class="active">Daily Challenge</a>
@@ -19,7 +19,6 @@
     <a href="/formula.html" data-path="formula">Formula</a>
     <a href="/admin.html" data-path="admin" id="admin-link" style="display:none;">Admin</a>
     <a class="nav-user" href="/profile.html" id="nav-user"></a>
-    <button class="btn-ghost" id="logout-btn">Log out</button>
   </div>
 </nav>
 
@@ -103,7 +102,7 @@ function saveDailyOrder(order) {
 
 async function boot() {
   me = await requireSession();
-  document.getElementById("nav-user").textContent = me.username;
+  document.getElementById("nav-user").textContent = 'Profile';
   if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
   document.getElementById("streak-line").textContent = me.daily_streak > 0
     ? `\uD83D\uDD25 ${me.daily_streak} day streak`

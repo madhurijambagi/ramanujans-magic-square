@@ -46,7 +46,7 @@ function formatDate(iso) {
 }
 
 function initNav(activePath) {
-  const links = document.querySelectorAll(".nav-links a[data-path]");
+  const links = document.querySelectorAll("a[data-path]");
   links.forEach((a) => {
     if (a.getAttribute("data-path") === activePath) a.classList.add("active");
   });

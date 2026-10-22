@@ -37,6 +37,7 @@
 
   function setOpen(which) {
     const open = Boolean(which);
+    if (voiceMode && which !== "voice" && "speechSynthesis" in window) speechSynthesis.cancel();
     backdrop.hidden = !open;
     panel.hidden = which !== "chat";
     voicePanel.hidden = which !== "voice";
@@ -129,9 +130,14 @@
     utterance.rate = 0.92;
     utterance.pitch = 0.92;
     const voices = speechSynthesis.getVoices();
-    const wanted = /(male|man|david|mark|daniel|james|guy)/i;
+    const wanted = /(?:^|[\s_-])male(?:$|[\s_-])|(?:^|[\s_-])man(?:$|[\s_-])|david|mark|daniel|james|guy/i;
     const matchingLanguage = voices.filter((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2)));
-    utterance.voice = matchingLanguage.find((voice) => wanted.test(voice.name)) || matchingLanguage[0] || null;
+    const maleVoice = matchingLanguage.find((voice) => wanted.test(voice.name));
+    if (!maleVoice) {
+      $("#voice-status").textContent = "A male voice is not available in this browser.";
+      return;
+    }
+    utterance.voice = maleVoice;
     speechSynthesis.speak(utterance);
   }
 
@@ -153,7 +159,7 @@
       addMessage(result.answer, "assistant", result.assistant_message_id, result.suggestions || []);
       status.textContent = "Curated MagicSquare guide";
       $("#voice-status").textContent = "Reply ready. Tap the microphone to ask another question.";
-      if (voice) speak(result.answer, result.speech_language || result.language || language.value);
+      if (voice && !voicePanel.hidden) speak(result.answer, result.speech_language || result.language || language.value);
     } catch (error) {
       status.textContent = error.message;
       $("#voice-status").textContent = error.message;
@@ -224,7 +230,7 @@
   launch.addEventListener("click", openChat);
   $(".companion-close").addEventListener("click", () => setOpen(null));
   $("#companion-mic").addEventListener("click", openVoice);
-  $("#voice-close").addEventListener("click", () => setOpen(null));
+  $("#voice-close").addEventListener("click", () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); setOpen(null); });
   backdrop.addEventListener("click", (event) => { if (event.target === backdrop) setOpen(null); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !backdrop.hidden) setOpen(null); });
   $("#companion-form").addEventListener("submit", (event) => {
