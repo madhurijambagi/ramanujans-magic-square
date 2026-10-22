@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from chatbot_rules import answer_for, OFF_TOPIC
+from chatbot_i18n import kannada_answer, kannada_suggestions
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_PACKAGES = ROOT / ".python_packages"
@@ -547,7 +548,7 @@ def chatbot():
 
     if command_language:
         answer = ("I'll reply in English from now on." if language == "en"
-                  else "Kannada requests are supported; chatbot answers are provided in English.")
+                  else "ಸರಿ, ಇನ್ನು ಮುಂದೆ ನಾನು ಕನ್ನಡದಲ್ಲೇ ಉತ್ತರಿಸುತ್ತೇನೆ.")
         suggestions = []
         in_scope = True
     else:
@@ -561,16 +562,21 @@ def chatbot():
             lines += [("main diagonal", sum(grid[i][i] for i in range(n))), ("other diagonal", sum(grid[i][n - i - 1] for i in range(n)))]
             correct = [name for name, total in lines if total == target]
             answer = f"Your {n}×{n} board has target {target}. Correct lines: {', '.join(correct) if correct else 'none yet'}. Check the sum labels for the lines that need work."
-    # Kannada is accepted as an input preference, while curated answer text remains English.
     if not in_scope:
         answer = OFF_TOPIC
         suggestions = []
+
+    # Curated answers remain the single source of game knowledge; render them
+    # in Kannada when that reply language is selected, including voice replies.
+    if language == "kn":
+        answer = kannada_answer(question, answer, username)
+        suggestions = kannada_suggestions(suggestions)
 
     uid, aid = _save_chat_pair(
         user_id, request_id, game_title, question, answer,
         {"game": game_context, "language": language, "rule_based": True},
     )
-    return jsonify(answer=answer, ai=False, language=language, speech_language="en",
+    return jsonify(answer=answer, ai=False, language=language, speech_language=language,
                    suggestions=suggestions, user_message_id=uid, assistant_message_id=aid)
 
 @app.get("/api/chatbot/history")
