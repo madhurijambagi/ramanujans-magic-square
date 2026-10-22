@@ -15,7 +15,7 @@
       </section>
       <section class="voice-panel" id="voice-panel" role="dialog" aria-modal="true" aria-label="Voice chat" hidden>
         <header><div><strong>Voice chat</strong><small>Ask about MagicSquare or gaming</small></div><button type="button" id="voice-close" aria-label="Close voice chat">×</button></header>
-        <div id="voice-status" role="status">Tap the microphone to start speaking. Replies use the available male voice.</div>
+        <div id="voice-status" role="status">Tap the microphone to start speaking. Replies use a voice available on your device.</div>
         <button type="button" id="voice-listen" class="voice-mic" aria-label="Start voice chat">🎙</button>
       </section>
     </div>`;
@@ -128,18 +128,19 @@
     }
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-IN";
+    utterance.lang = lang === "kn" ? "kn-IN" : lang === "hi" ? "hi-IN" : "en-IN";
     utterance.rate = 0.92;
     utterance.pitch = 0.92;
     const voices = speechSynthesis.getVoices();
     const wanted = /(?:^|[\s_-])male(?:$|[\s_-])|(?:^|[\s_-])man(?:$|[\s_-])|david|mark|daniel|james|guy/i;
     const matchingLanguage = voices.filter((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2)));
-    const maleVoice = matchingLanguage.find((voice) => wanted.test(voice.name));
-    if (!maleVoice) {
-      $("#voice-status").textContent = "A male voice is not available in this browser.";
-      return;
-    }
-    utterance.voice = maleVoice;
+    // Prefer a voice labelled male, but Android and some mobile browsers do not
+    // expose gendered voice names. In that case let the device choose its default.
+    utterance.voice = matchingLanguage.find((voice) => wanted.test(voice.name))
+      || matchingLanguage.find((voice) => voice.default)
+      || matchingLanguage[0]
+      || voices.find((voice) => voice.default)
+      || null;
     speechSynthesis.speak(utterance);
   }
 
