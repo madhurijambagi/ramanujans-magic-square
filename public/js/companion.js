@@ -1,4 +1,6 @@
 (() => {
+  if (["/", "/index.html", "/reset-password.html"].includes(location.pathname) || typeof api === "undefined") return;
+  api.get("/api/auth/me").then(() => {
   const root = document.createElement("section");
   root.className = "game-companion";
   root.innerHTML = `
@@ -258,4 +260,5 @@
     }
   }).catch(() => {});
   $("#companion-mode").textContent = "Curated MagicSquare guide";
+  }).catch(() => {});
 })();

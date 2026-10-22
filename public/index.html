@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SquareVerse</title>
+<title>Ramanujan's Magic Square</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
 .landing-page{--ink:#edf7ff;--sub:#a9bbcf;--acid:#c8ff3d;--cyan:#41e6ff;min-height:100vh;background:#080e18;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif;overflow-x:hidden}
 .landing-page::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 18% 20%,#13394d77,transparent 42%),radial-gradient(ellipse at 85% 80%,#263b1170,transparent 35%);z-index:0}
-.landing-page .nav,.landing-stage,.landing-page footer{position:relative;z-index:1}.landing-page .nav{max-width:1280px;margin:auto;background:transparent;border:0;color:var(--ink);padding:1.3rem 1.5rem;z-index:5}.landing-page .nav-brand{color:var(--ink);font-weight:800;letter-spacing:.04em}.landing-page .menu-toggle span{background:var(--acid)}.landing-page .nav-links a{color:var(--sub)}.landing-page .nav-links a:hover{color:var(--acid)}
+.landing-page .nav,.landing-stage,.landing-page footer{position:relative;z-index:1}.landing-page .nav{max-width:1280px;margin:auto;background:transparent;border:0;color:var(--ink);padding:1.3rem 1.5rem;z-index:5}.landing-page .nav-brand{color:var(--ink);font-weight:800;letter-spacing:.04em}.landing-page .nav-links a{color:var(--sub)}.landing-page .nav-links a:hover{color:var(--acid)}
 .landing-stage{max-width:1280px;min-height:calc(100vh - 130px);margin:0 auto;padding:3rem 1.5rem 5rem;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(330px,.75fr);gap:3rem;align-items:center}.landing-page #auth-card{grid-column:2;grid-row:1;width:100%;max-width:440px;margin:0}.landing-page #auth-card .card{padding:1.6rem;background:#111c29eF;border:1px solid #ffffff20;border-radius:20px;box-shadow:0 24px 90px #0008;color:var(--ink)}.landing-page #auth-card label,.landing-page #auth-card p{color:var(--sub)}.landing-page #auth-card input{background:#0b131e;border-color:#304257;color:white}.landing-page #auth-card .tab-btn{color:var(--sub)}.landing-page #auth-card .tab-btn.active{background:var(--acid);color:#101817}.landing-page .btn{background:var(--acid);border-color:var(--acid);color:#101817;font-weight:800}.landing-page .btn-ghost,.landing-page .btn-secondary{color:var(--cyan);border-color:#41e6ff77}.landing-page .hero{grid-column:1;grid-row:1;display:block;margin:0;padding:0;background:transparent;box-shadow:none}.landing-page .hero>div:first-child{max-width:690px}.landing-page .hero .eyebrow{color:var(--acid);font-family:ui-monospace,monospace;letter-spacing:.2em}.landing-page .hero h1{font-size:clamp(3.2rem,7vw,6.3rem);line-height:.96;letter-spacing:-.065em;color:#f6fbff;margin:.7rem 0 1.2rem}.landing-page .hero h1 span{color:var(--acid)}.landing-page .hero .lede{max-width:54ch;color:var(--sub);font-size:1.08rem;line-height:1.75}.landing-page .hero-cta{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.7rem}.landing-page .hero-grid-wrap{margin-top:2rem;display:flex;justify-content:flex-start}.landing-page #hero-square{width:min(245px,65vw)!important;filter:drop-shadow(0 18px 38px #41e6ff22)}.landing-page #hero-square .tile{background:#12243a;border-color:#41e6ff45;color:var(--cyan)}.landing-page #hero-square .tile.building{background:#c8ff3d;color:#101817}.landing-page .landing-stats{display:flex;gap:1.8rem;margin-top:2rem;color:var(--sub);font-size:.78rem;text-transform:uppercase;letter-spacing:.1em}.landing-page .landing-stats strong{display:block;color:var(--ink);font-size:1.15rem;letter-spacing:0}.landing-page footer{color:#8295aa;text-align:center;padding:1.5rem;border-top:1px solid #ffffff12}
 @media(max-width:850px){.landing-stage{grid-template-columns:1fr;gap:2rem;padding-top:1.3rem}.landing-page .hero,.landing-page #auth-card{grid-column:1;grid-row:auto}.landing-page #auth-card{max-width:520px}.landing-page .hero h1{font-size:clamp(3rem,13vw,5rem)}.landing-page .hero-grid-wrap{display:none}.landing-page .landing-stats{gap:1rem;flex-wrap:wrap}}
 </style>
@@ -16,7 +16,7 @@
 <body class="landing-page">
 
 <nav class="nav">
-  <div class="nav-brand"><button type="button" class="menu-toggle" aria-label="Open navigation menu" aria-expanded="false"><span></span><span></span><span></span></button> SquareVerse</div>
+  <div class="nav-brand">Ramanujan's Magic Square</div>
   <div class="nav-links">
     <a href="/leaderboard.html">Leaderboard</a>
     <a href="/formula.html">Formula</a>
@@ -58,9 +58,8 @@
   <div>
     <div class="eyebrow">TACTICAL PUZZLES · DAILY RUNS · GLOBAL RANKINGS</div>
     <h1>Think in patterns.<br><span>Play for the solve.</span></h1>
-    <p class="lede">SquareVerse turns Ramanujan’s magic square into a competitive puzzle arena. Build your run, beat the clock, master every board size, and put your name on the leaderboard.</p>
+    <p class="lede">Ramanujan's Magic Square turns a timeless mathematical pattern into a competitive puzzle arena. Build your run, beat the clock, master every board size, and put your name on the leaderboard.</p>
     <div class="hero-cta">
-      <button class="btn" onclick="document.getElementById('auth-card').scrollIntoView({behavior:'smooth'})">Enter the arena</button>
       <a href="/leaderboard.html" class="btn-ghost" style="display:inline-flex;align-items:center;">View leaderboard</a>
     </div>
     <div class="landing-stats"><div><strong>3×3—10×10</strong>Board sizes</div><div><strong>Daily</strong>Challenge runs</div><div><strong>Live</strong>Personal records</div></div>
@@ -71,7 +70,7 @@
 </section>
 </main>
 
-<footer>SquareVerse &mdash; a universe of magic-square puzzles.</footer>
+<footer>Ramanujan's Magic Square &mdash; a universe of magic-square puzzles.</footer>
 
 <script src="/js/api.js"></script>
 <script src="/js/magicSquare.js"></script>
@@ -180,6 +179,5 @@ forgotForm.addEventListener("submit", async (e) => {
 })();
 </script>
 <script src="/js/theme.js"></script>
-<script src="/js/companion.js"></script>
 </body>
 </html>

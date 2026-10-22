@@ -33,7 +33,9 @@
 
   const nav = document.querySelector(".nav");
   const brand = nav && nav.querySelector(".nav-brand");
-  if (nav && brand) {
+  const publicPage = ["/", "/index.html", "/reset-password.html"].includes(location.pathname);
+  if (nav && brand && !publicPage && typeof api !== "undefined") {
+    api.get("/api/auth/me").then(() => {
     const oldGlyph = brand.querySelector(".glyph");
     let toggle = brand.querySelector(".menu-toggle");
     if (!toggle) {
@@ -42,6 +44,7 @@
       toggle.setAttribute("aria-expanded", "false"); toggle.innerHTML = "<span></span><span></span><span></span>";
       if (oldGlyph) oldGlyph.replaceWith(toggle); else brand.prepend(toggle);
     }
+    toggle.hidden = false;
     const menu = document.createElement("div"); menu.className = "site-menu"; menu.hidden = true;
     menu.setAttribute("aria-label", "Site navigation");
     const list = document.createElement("div"); list.className = "site-menu-list";
@@ -81,9 +84,11 @@
     section.innerHTML = '<button type="button" class="site-menu-item" aria-expanded="false">Change Theme</button><label hidden>Color theme <select aria-label="Choose a website color theme"></select></label>';
     const button = section.querySelector("button"), label = section.querySelector("label"); picker = section.querySelector("select");
     Object.entries(themes).forEach(([value, theme]) => picker.add(new Option(theme.label, value)));
+    picker.value = document.documentElement.dataset.theme || "blue";
     button.addEventListener("click", () => { label.hidden = !label.hidden; button.setAttribute("aria-expanded", String(!label.hidden)); if (!label.hidden) picker.focus(); });
     picker.addEventListener("change", () => applyTheme(picker.value));
     themeItem.appendChild(section); list.appendChild(themeItem);
+    }).catch(() => {});
   }
   applyTheme(localStorage.getItem("squareverse-theme") || "blue");
 })();

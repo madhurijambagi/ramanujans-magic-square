@@ -99,9 +99,12 @@ button, input, select {
 
 .nav-links { display: flex; gap: 1.6rem; align-items: center; }
 .nav-links a { color: var(--muted); font-weight: 500; font-size: 0.92rem; }
+.nav-links a[href="/game.html"], .nav-links a[href="/daily.html"], .nav-links a[href="/manual.html"],
+.nav-links a[href="/dashboard.html"], .nav-links a[href="/leaderboard.html"], .nav-links a[href="/formula.html"] { display: none; }
 .nav-links a.active, .nav-links a:hover { color: var(--text); text-decoration: none; }
 .nav-user { color: var(--muted); font-size: 0.85rem; font-family: var(--font-mono); }
 .menu-toggle { width: 30px; height: 30px; padding: 5px 3px; display: inline-flex; flex-direction: column; justify-content: center; gap: 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.menu-toggle[hidden] { display: none; }
 .menu-toggle:hover { background: var(--surface-raised); }
 .menu-toggle span { display: block; width: 22px; height: 2px; border-radius: 2px; background: var(--gold); }
 .site-menu { position: absolute; z-index: 60; top: calc(100% + 1.35rem); left: 0; width: min(280px, calc(100vw - 2rem)); padding: .5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 40px #11182730; }
@@ -641,9 +644,7 @@ html[data-theme] .companion-panel header small, html[data-theme] .voice-panel he
 .profile-page main > :not(.card),
 .admin-page main > :not(.card):not(.tabs),
 .admin-page .tabs { grid-column: 1 / -1; }
-.profile-page main > .card { grid-column: span 6; margin: 0; }
-.profile-page main > .card:first-of-type,
-.profile-page main > .card:last-of-type { grid-column: span 6; }
+.profile-page main > .card { grid-column: 1 / -1; margin: 0; }
 .formula-page main > :not(.card) { grid-column: 1 / -1; }
 .formula-page main > .card { grid-column: span 6; margin: 0; }
 .formula-page main > #dob-square { grid-column: 1 / -1; }
@@ -685,7 +686,7 @@ html[data-theme] .dashboard-page .badge-card .badge-desc { color: var(--muted); 
   .dashboard-page .summary-cards { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 }
 @media (min-width: 761px) {
-  .profile-page main, .formula-page main { max-width: 1080px !important; }
+  .formula-page main { max-width: 1080px !important; }
 }
 html[data-theme] .dashboard-page a { color: var(--gold); }
 html[data-theme] .dashboard-page .btn-secondary { color: var(--gold); border-color: var(--gold); background: var(--surface); }
