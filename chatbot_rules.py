@@ -187,7 +187,7 @@ def answer_for(question, username="there", context=None):
         (r"add or verify.*email|verify.*email", "On the Profile page, enter your email and save. Then open the verification link sent to you. Links last 24 hours, and you can request a new one."),
         (r"download.*data|export.*data", "On the Profile page, press 'Download account data (CSV)'."),
         (r"delete.*account", "On the Profile page, press 'Delete my account' and confirm with your password. This permanently removes your attempts and achievements."),
-        (r"chat language|reply in kannada|change.*kannada|kannada", "This chat's answers are provided in English. You can choose ಕನ್ನಡ in the language selector to recognize Kannada voice input."),
+        (r"chat language|reply in kannada|change.*kannada|kannada", "Choose Kannada in the reply-language selector to receive Kannada replies. You can type or speak your question in English."),
         (r"voice chat|use voice|voice button|microphone", "Open the MagicSquare companion, tap Voice, then tap the microphone and speak. The browser transcribes your question and reads the reply aloud using a voice available on your device."),
         (r"does.{0,15}(?:chatbot|companion).{0,15}ai|is.{0,15}(?:chatbot|companion).{0,15}ai|rule based|rule-based", "The MagicSquare companion is rule-based. It matches questions to curated answers and does not send your messages to an AI service."),
         (r"screenshot|send a screenshot|image analysis", "Screenshot analysis is not available in this rule-based chat."),
@@ -204,7 +204,7 @@ def answer_for(question, username="there", context=None):
             return _entry(message) + (True,)
 
     # Short direct topic requests also resolve to useful curated answers.
-    if re.fullmatch(r"how to play|help with account|account help", compact):
+    if re.fullmatch(r"how to play|how do i play|help with account|account help", compact):
         return _entry("The finished square is shown, then scrambled. Tap two tiles to swap them. Keep swapping until every row, column and diagonal reaches the target.") + (True,)
     # Broadly recognize site and puzzle terms so a related question gets a
     # useful orientation response instead of an unrelated-topic refusal.

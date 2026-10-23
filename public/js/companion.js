@@ -8,7 +8,7 @@
     <div class="companion-backdrop" hidden>
       <section class="companion-panel" id="companion-panel" role="dialog" aria-modal="true" aria-label="MagicSquare chat" hidden>
         <header><div><strong>SquareVerse</strong><small id="companion-mode">MagicSquare and gaming help</small></div><button type="button" class="companion-close" aria-label="Close chat">×</button></header>
-        <div class="companion-options"><select id="companion-game" aria-label="Game"><option>Ramanujan's Magic Square</option></select><select id="companion-language" aria-label="Reply language"><option value="en">English replies</option><option value="kn">ಕನ್ನಡ replies · English input</option></select></div>
+        <div class="companion-options"><select id="companion-game" aria-label="Game"><option>Ramanujan's Magic Square</option></select><select id="companion-language" aria-label="Reply language"><option value="en">English</option><option value="kn">Kannada</option></select></div>
         <div class="companion-log" id="companion-log" role="log" aria-live="polite"></div><div class="companion-status" id="companion-status" role="status"></div>
         <form class="companion-form" id="companion-form"><textarea id="companion-input" maxlength="500" rows="2" placeholder="Ask about MagicSquare or gaming…" aria-label="Message"></textarea><div><button type="button" id="companion-mic" aria-label="Open voice chat">🎙 Voice</button><button type="submit" class="btn">Send</button></div></form>
         <div class="companion-footer"><span>Keep personal information private.</span><button type="button" id="companion-clear">Clear history</button></div>
