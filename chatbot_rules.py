@@ -188,7 +188,7 @@ def answer_for(question, username="there", context=None):
         (r"download.*data|export.*data", "On the Profile page, press 'Download account data (CSV)'."),
         (r"delete.*account", "On the Profile page, press 'Delete my account' and confirm with your password. This permanently removes your attempts and achievements."),
         (r"chat language|reply in kannada|change.*kannada|kannada", "Choose Kannada in the reply-language selector to receive Kannada replies. You can type or speak your question in English."),
-        (r"voice chat|use voice|voice button|microphone", "Open the MagicSquare companion, tap Voice, then tap the microphone and speak. The browser transcribes your question and reads the reply aloud using a voice available on your device."),
+        (r"voice chat|use voice|voice button|microphone", "Voice chat has been removed. You can ask your MagicSquare question in the text chat."),
         (r"does.{0,15}(?:chatbot|companion).{0,15}ai|is.{0,15}(?:chatbot|companion).{0,15}ai|rule based|rule-based", "The MagicSquare companion is rule-based. It matches questions to curated answers and does not send your messages to an AI service."),
         (r"screenshot|send a screenshot|image analysis", "Screenshot analysis is not available in this rule-based chat."),
         (r"remember.*history|chat history|clear history", "For logged-in users, chat history is saved. Use the 'Clear history' button to remove it."),

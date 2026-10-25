@@ -13,6 +13,8 @@ def kannada_answer(question, english_answer, username=""):
 
     if english_answer == "I can only help with questions about MagicSquare and gaming related topics.":
         return KANNADA_REFUSAL
+    if english_answer == "Voice chat has been removed. You can ask your MagicSquare question in the text chat.":
+        return "ಧ್ವನಿ ಚಾಟ್ ತೆಗೆದುಹಾಕಲಾಗಿದೆ. MagicSquare ಬಗ್ಗೆ ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಪಠ್ಯ ಚಾಟ್‌ನಲ್ಲಿ ಕೇಳಬಹುದು."
     if re.search(r"(?:change|switch|set|reply|answer|speak|talk|chat|language|from now).{0,30}(?:kannada|ಕನ್ನಡ)|ಕನ್ನಡ", q):
         return "ಸರಿ, ಇನ್ನು ಮುಂದೆ ನಾನು ಕನ್ನಡದಲ್ಲೇ ಉತ್ತರಿಸುತ್ತೇನೆ."
     if re.fullmatch(r"(?:hi+|hello|hey+|namaste|ನಮಸ್ಕಾರ|good (?:morning|afternoon|evening))[!. ,]*", q):
@@ -65,9 +67,6 @@ def kannada_answer(question, english_answer, username=""):
         return "ಮೂರು-ಗೆರೆ ಮೆನು ತೆರೆದು Change Theme ಆಯ್ಕೆಮಾಡಿ. ಬಯಸಿದ ಬಣ್ಣದ ಥೀಮ್ ಆಯ್ಕೆ ಮಾಡಿದರೆ ಅದು ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಉಳಿಯುತ್ತದೆ."
     if re.search(r"website|web site|site|app|feature|navigation|navigate|what can i do|this website|this site", q):
         return "ಇದು ರಾಮಾನುಜನ್ ಅವರ ಮ್ಯಾಜಿಕ್ ಚೌಕ ಆಧಾರಿತ ಪಜಲ್ ಆಟ. ಮೂರು-ಗೆರೆ ಮೆನುವಿನಿಂದ ಆಟದ ಪುಟಗಳು, Daily Challenge ಮತ್ತು Formula ತೆರೆಯಬಹುದು. Profile‌ನಲ್ಲಿ ಖಾತೆ ಆಯ್ಕೆಗಳು, Dashboard‌ನಲ್ಲಿ ಪ್ರಗತಿ ಮತ್ತು Leaderboard‌ನಲ್ಲಿ ವೇಗದ ಫಲಿತಾಂಶಗಳಿವೆ."
-    if re.search(r"voice|microphone|speak|voice chat|ಧ್ವನಿ", q):
-        return "Voice chat ತೆರೆಯಲು chatbot‌ನ Voice ಬಟನ್ ಒತ್ತಿ. ಮೈಕ್ರೊಫೋನ್ ಒತ್ತಿ ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ ಪ್ರಶ್ನೆ ಕೇಳಿ; ಆಯ್ದ Kannada ಭಾಷೆಯಲ್ಲಿ ಉತ್ತರವನ್ನು ಕೇಳಬಹುದು."
-
     return "ನಾನು ಮ್ಯಾಜಿಕ್ ಚೌಕ ಮತ್ತು ಈ ವೆಬ್‌ಸೈಟ್ ಬಗ್ಗೆ ಸಹಾಯ ಮಾಡಬಹುದು. ನಿಯಮಗಳು, ಗುರಿ ಮೊತ್ತ, ಆಟದ ವಿಧಾನಗಳು, ಸುಳಿವುಗಳು, Dashboard ಅಥವಾ Profile ಬಗ್ಗೆ ಕೇಳಿ."
 
 

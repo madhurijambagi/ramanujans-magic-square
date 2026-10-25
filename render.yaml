@@ -2,10 +2,20 @@ services:
   - type: web
     name: ramanujans-magic-square
     runtime: docker
-    plan: free
+    plan: starter
     healthCheckPath: /
+    disk:
+      name: magic-square-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PORT
         value: "10000"
       - key: SESSION_SECRET
         generateValue: true
+      - key: DATA_DIR
+        value: /var/data
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
