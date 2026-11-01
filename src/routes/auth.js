@@ -18,8 +18,9 @@ function makeToken() {
 
 router.post("/register", async (req, res) => {
   const { username, password, email } = req.body || {};
+  const cleanUsername = typeof username === "string" ? username.trim().toLowerCase() : username;
 
-  if (typeof username !== "string" || !USERNAME_RE.test(username)) {
+  if (typeof cleanUsername !== "string" || !USERNAME_RE.test(cleanUsername)) {
     return res.status(400).json({
       error:
         "Username must be 3-20 characters and contain only letters, numbers, and underscores.",
@@ -43,15 +44,15 @@ router.post("/register", async (req, res) => {
   }
 
   const existing = db
-    .prepare("SELECT id FROM users WHERE username = ?")
-    .get(username);
+    .prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE")
+    .get(cleanUsername);
   if (existing) {
     return res.status(409).json({ error: "That username is already taken." });
   }
 
   // Production administration is explicitly configured, rather than granted
   // to whichever visitor happens to register first.
-  const isBootstrapAdmin = !!process.env.ADMIN_USERNAME && username === process.env.ADMIN_USERNAME;
+  const isBootstrapAdmin = !!process.env.ADMIN_USERNAME && cleanUsername === process.env.ADMIN_USERNAME.trim().toLowerCase();
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -67,7 +68,7 @@ router.post("/register", async (req, res) => {
       `INSERT INTO users (username, password_hash, is_admin, email, verify_token, verify_token_expires)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(username, passwordHash, isBootstrapAdmin ? 1 : 0, cleanEmail, verifyToken, verifyExpires);
+    .run(cleanUsername, passwordHash, isBootstrapAdmin ? 1 : 0, cleanEmail, verifyToken, verifyExpires);
 
   req.session.userId = result.lastInsertRowid;
 
@@ -82,7 +83,7 @@ router.post("/register", async (req, res) => {
 
   return res.status(201).json({
     id: result.lastInsertRowid,
-    username,
+    username: cleanUsername,
     is_admin: isBootstrapAdmin,
     email: cleanEmail,
     email_verified: false,
@@ -96,9 +97,10 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Username and password are required." });
   }
 
+  const cleanUsername = username.trim();
   const user = db
-    .prepare("SELECT * FROM users WHERE username = ?")
-    .get(username);
+    .prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE")
+    .get(cleanUsername);
 
   if (!user) {
     return res.status(401).json({ error: "Invalid username or password." });
