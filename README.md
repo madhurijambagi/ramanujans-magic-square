@@ -1,6 +1,8 @@
 # SquareVerse
 
-SquareVerse is a Flask and SQLite magic-square puzzle game. Players can solve boards from 3×3 through 10×10, play Daily Challenges, compare leaderboard times, track achievements and export their account history as CSV.
+SquareVerse is a Flask magic-square puzzle game. Players can solve boards from 3×3 through 10×10, play Daily Challenges, compare leaderboard times, track achievements and export their account history as CSV. Local development uses SQLite; production can use PostgreSQL through `DATABASE_URL`.
+
+See [System Workflow](SYSTEM_WORKFLOW.md) for the application architecture and the main player, persistence, and chatbot flows.
 
 ## Run locally
 
@@ -9,7 +11,7 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open `http://localhost:3000`. Set `SESSION_SECRET` to a long random value for deployment, and set `ADMIN_USERNAME` before registering the first administrator. To enable the AI chatbot, configure `OPENAI_API_KEY` on the server; `OPENAI_MODEL` defaults to `gpt-4.1-mini`. If the key is absent or OpenAI is unavailable, the chatbot falls back to curated responses. With AI enabled, only the current question, selected reply language, and relevant excerpts from `knowledge/magic-square-guide.md` are sent to OpenAI. Usernames, saved chat history, and live board state are excluded. Account and game data are stored in SQLite under `DATA_DIR` (default: `data/`). The included Render configuration uses a persistent disk mounted at `/var/data`, so the same SQLite database survives code updates and service restarts. Persistent disks require a paid Render web service; Render's free web services have ephemeral filesystems. For another host, point `DATA_DIR` at persistent storage. Do not replace or clear the database when deploying new code.
+Open `http://localhost:3000`. Without `DATABASE_URL`, local runs use SQLite at `data/data.sqlite`. Set `SESSION_SECRET` to a long random value for deployment, and set `ADMIN_USERNAME` before registering the first administrator. To enable the AI chatbot, configure `OPENAI_API_KEY` on the server; `OPENAI_MODEL` defaults to `gpt-4.1-mini`. If the key is absent or OpenAI is unavailable, the chatbot falls back to curated responses. With AI enabled, only the current question, selected reply language, and relevant excerpts from `knowledge/magic-square-guide.md` are sent to OpenAI. Usernames, saved chat history, and live board state are excluded. When `DATABASE_URL` is a PostgreSQL connection URL, accounts and all game history are stored in PostgreSQL and survive Render restarts and redeploys. Keep `SESSION_SECRET` stable across deploys so signed login sessions remain valid.
 
 ## Gaming companion
 
@@ -19,4 +21,4 @@ The chatbot's source guide is in `knowledge/`. Add reviewed game guides there to
 
 ## Data and deployment
 
-SQLite data is stored in `data/` by default for local use. Set `DATA_DIR` to a persistent location for deployments. A Render blueprint is included in `render.yaml`; it provisions a paid web service and persistent disk. Before moving an existing live deployment to a new disk, copy its existing SQLite database to the disk once, or existing users will need to be migrated into the new database. Deployments that keep the same persistent disk preserve account records; deployments that delete or replace the disk do not.
+For a free Render web service, create an external PostgreSQL database and add its connection URL as the `DATABASE_URL` environment variable. The included `render.yaml` keeps the web service on Render's Free plan and prompts for this secret. Free database plans have provider-specific storage, inactivity, and backup limits; check those limits and keep a separate backup. For example, Supabase currently includes 500 MB on its Free plan, and may pause projects after a week of low activity while retaining their data. Copy existing SQLite accounts and history once with `python migrate_sqlite_to_postgres.py [path/to/data.sqlite]` after setting `DATABASE_URL`; the destination must be empty. Never commit a database URL or SQLite database containing account data.

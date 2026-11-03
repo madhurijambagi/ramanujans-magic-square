@@ -23,6 +23,7 @@ from functools import wraps
 from pathlib import Path
 from chatbot_rules import answer_for, OFF_TOPIC
 from chatbot_i18n import kannada_answer, kannada_suggestions
+from database import DB_PATH, USE_POSTGRES, connect, initialize_postgres
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_PACKAGES = ROOT / ".python_packages"
@@ -30,10 +31,6 @@ if LOCAL_PACKAGES.exists():
     sys.path.insert(0, str(LOCAL_PACKAGES))
 import bcrypt
 from flask import Flask, Response, g, jsonify, redirect, request, session, send_from_directory
-_data_dir_setting = Path(os.environ.get("DATA_DIR", ROOT / "data"))
-DATA_DIR = _data_dir_setting if _data_dir_setting.is_absolute() else ROOT / _data_dir_setting
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = DATA_DIR / "data.sqlite"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini").strip()
 GUIDE_PATH = ROOT / "knowledge" / "magic-square-guide.md"
@@ -48,9 +45,7 @@ app.config.update(SECRET_KEY=os.environ.get("SESSION_SECRET", "magic-square-dev-
 
 def db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys=ON")
+        g.db = connect()
     return g.db
 
 
@@ -71,6 +66,9 @@ def today(): return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def initialize_database():
+    if USE_POSTGRES:
+        initialize_postgres()
+        return
     con = sqlite3.connect(DB_PATH)
     con.executescript("""
       PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
