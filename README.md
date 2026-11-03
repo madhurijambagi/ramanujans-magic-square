@@ -1,6 +1,6 @@
 # SquareVerse
 
-SquareVerse is a Flask magic-square puzzle game. Players can solve boards from 3×3 through 10×10, play Daily Challenges, compare leaderboard times, track achievements and export their account history as CSV. Local development uses SQLite; production can use PostgreSQL through `DATABASE_URL`.
+SquareVerse is a Flask magic-square puzzle game. Players can solve boards from 3×3 through 10×10, play Daily Challenges, compare leaderboard times, track achievements and export their account history as CSV. Local development uses SQLite; production can use MySQL through `DATABASE_URL`.
 
 See [System Workflow](SYSTEM_WORKFLOW.md) for the application architecture and the main player, persistence, and chatbot flows.
 
@@ -11,7 +11,7 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open `http://localhost:3000`. Without `DATABASE_URL`, local runs use SQLite at `data/data.sqlite`. Set `SESSION_SECRET` to a long random value for deployment, and set `ADMIN_USERNAME` before registering the first administrator. To enable the AI chatbot, configure `OPENAI_API_KEY` on the server; `OPENAI_MODEL` defaults to `gpt-4.1-mini`. If the key is absent or OpenAI is unavailable, the chatbot falls back to curated responses. With AI enabled, only the current question, selected reply language, and relevant excerpts from `knowledge/magic-square-guide.md` are sent to OpenAI. Usernames, saved chat history, and live board state are excluded. When `DATABASE_URL` is a PostgreSQL connection URL, accounts and all game history are stored in PostgreSQL and survive Render restarts and redeploys. Keep `SESSION_SECRET` stable across deploys so signed login sessions remain valid.
+Open `http://localhost:3000`. Without `DATABASE_URL`, local runs use SQLite at `data/data.sqlite`. Set `SESSION_SECRET` to a long random value for deployment, and set `ADMIN_USERNAME` before registering the first administrator. To enable the AI chatbot, configure `OPENAI_API_KEY` on the server; `OPENAI_MODEL` defaults to `gpt-4.1-mini`. If the key is absent or OpenAI is unavailable, the chatbot falls back to curated responses. With AI enabled, only the current question, selected reply language, and relevant excerpts from `knowledge/magic-square-guide.md` are sent to OpenAI. Usernames, saved chat history, and live board state are excluded. When `DATABASE_URL` is a MySQL connection URL, accounts and all game history are stored in MySQL and survive Render restarts and redeploys. Keep `SESSION_SECRET` stable across deploys so signed login sessions remain valid.
 
 ## Gaming companion
 
@@ -21,4 +21,4 @@ The chatbot's source guide is in `knowledge/`. Add reviewed game guides there to
 
 ## Data and deployment
 
-For a free Render web service, create an external PostgreSQL database and add its connection URL as the `DATABASE_URL` environment variable. The included `render.yaml` keeps the web service on Render's Free plan and prompts for this secret. Free database plans have provider-specific storage, inactivity, and backup limits; check those limits and keep a separate backup. For example, Supabase currently includes 500 MB on its Free plan, and may pause projects after a week of low activity while retaining their data. Copy existing SQLite accounts and history once with `python migrate_sqlite_to_postgres.py [path/to/data.sqlite]` after setting `DATABASE_URL`; the destination must be empty. Never commit a database URL or SQLite database containing account data.
+For a free Render web service, create an external MySQL database and add its service URL as the `DATABASE_URL` environment variable. The included `render.yaml` keeps the web service on Render's Free plan and prompts for this secret. Aiven currently offers a free MySQL service with 1 GB storage and backups; it may power off after inactivity, but can be powered back on. Check current provider limits and keep a separate backup. Copy existing SQLite accounts and history once with `python migrate_sqlite_to_mysql.py [path/to/data.sqlite]`; the destination must be empty. Never commit a database URL or SQLite database containing account data.

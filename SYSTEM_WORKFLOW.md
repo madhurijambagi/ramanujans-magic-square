@@ -8,7 +8,7 @@ flowchart TB
     Browser[Browser UI<br/>public HTML, CSS, JavaScript]
     API[Flask application<br/>app.py · REST API · session auth]
     Game[Game logic<br/>magic-square generation<br/>validation · daily sequence · achievements]
-    DB[(PostgreSQL via DATABASE_URL<br/>SQLite for local development)]
+    DB[(MySQL via DATABASE_URL<br/>SQLite for local development)]
     Guide[Reviewed guide<br/>knowledge/magic-square-guide.md]
     Rules[Curated chatbot rules<br/>chatbot_rules.py · chatbot_i18n.py]
     OpenAI[OpenAI Responses API<br/>optional · requires OPENAI_API_KEY]
@@ -46,5 +46,5 @@ flowchart TB
 
 - Flask serves the frontend files from `public/` and handles `/api/*` requests.
 - Session cookies identify signed-in players. Protected endpoints enforce authentication; admin endpoints also require an administrator role.
-- Local development defaults to `data/data.sqlite`. Set `DATABASE_URL` to a PostgreSQL connection string in deployment so accounts and game history survive restarts and code updates. The Render Free service uses an external database; SQLite files on its ephemeral filesystem are not persistent.
+- Local development defaults to `data/data.sqlite`. Set `DATABASE_URL` to a MySQL connection string in deployment so accounts and game history survive restarts and code updates. The Render Free service uses an external database; SQLite files on its ephemeral filesystem are not persistent.
 - Chatbot answers use curated local responses when OpenAI is unavailable. When enabled, the application sends the current question, reply language, and selected guide excerpts to OpenAI.
