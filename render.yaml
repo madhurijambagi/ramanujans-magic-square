@@ -10,10 +10,18 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: ramanujans-magic-square-db
+          property: connectionString
       - key: REQUIRE_DATABASE_URL
         value: "true"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+
+databases:
+  - name: ramanujans-magic-square-db
+    databaseName: ramanujans_magic_square
+    user: ramanujans_magic_square
+    plan: free

@@ -23,7 +23,7 @@ from functools import wraps
 from pathlib import Path
 from chatbot_rules import answer_for, OFF_TOPIC
 from chatbot_i18n import kannada_answer, kannada_suggestions
-from database import DB_PATH, USE_MYSQL, connect, initialize_mysql
+from database import DB_PATH, USE_POSTGRES, connect, initialize_postgres
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_PACKAGES = ROOT / ".python_packages"
@@ -66,8 +66,8 @@ def today(): return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def initialize_database():
-    if USE_MYSQL:
-        initialize_mysql()
+    if USE_POSTGRES:
+        initialize_postgres()
         return
     con = connect()
     con.executescript("""
