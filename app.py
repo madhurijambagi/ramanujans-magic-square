@@ -69,7 +69,7 @@ def initialize_database():
     if USE_POSTGRES:
         initialize_postgres()
         return
-    con = sqlite3.connect(DB_PATH)
+    con = connect()
     con.executescript("""
       PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS users (
