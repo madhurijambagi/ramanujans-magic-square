@@ -28,6 +28,7 @@
   <p id="streak-line" style="text-align:center; color:var(--gold-dim); font-family:var(--font-mono); font-size:0.85rem; margin-top:-0.6rem;"></p>
 
   <div id="all-complete-note" class="win-banner" style="display:none; max-width:640px; margin:0 auto 1.2rem;"></div>
+  <div id="daily-error" class="form-error" role="alert" style="display:none; max-width:640px; margin:0 auto 1rem; text-align:center;"></div>
 
   <div class="order-picker" id="order-picker"></div>
 
@@ -101,34 +102,62 @@ function saveDailyOrder(order) {
 }
 
 async function boot() {
-  me = await requireSession();
-  document.getElementById("nav-user").textContent = 'Profile';
-  if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
-  document.getElementById("streak-line").textContent = me.daily_streak > 0
-    ? `\uD83D\uDD25 ${me.daily_streak} day streak`
-    : "Start a streak by solving today's challenge";
-  initNav("daily");
+  const retry = document.getElementById("daily-error");
+  retry.style.display = "none";
+  try {
+    me = await requireSession();
+    if (!me) return;
+    document.getElementById("nav-user").textContent = 'Profile';
+    if (me.is_admin) document.getElementById("admin-link").style.display = "inline";
+    document.getElementById("streak-line").textContent = me.daily_streak > 0
+      ? `\uD83D\uDD25 ${me.daily_streak} day streak`
+      : "Start a streak by solving today's challenge";
+    initNav("daily");
 
-  document.getElementById("scramble-btn").addEventListener("click", startPuzzle);
-  document.getElementById("hint-btn").addEventListener("click", useHint);
-  document.getElementById("next-order-btn").addEventListener("click", goToNextOrder);
-  document.getElementById("undo-btn").addEventListener("click", undoMove);
+    document.getElementById("scramble-btn").onclick = startPuzzle;
+    document.getElementById("hint-btn").onclick = useHint;
+    document.getElementById("next-order-btn").onclick = goToNextOrder;
+    document.getElementById("undo-btn").onclick = undoMove;
 
-  // The server (not a locally-cached value) decides which size is next —
-  // this is what enforces "3x3, then 4x4, then 5x5 ..." with no way back
-  // to an earlier size, including on a fresh page load. completed_orders
-  // is rendered as a checkmark on the picker so it's obvious *why* a size
-  // was skipped straight to, instead of it looking like a bug.
-  const progress = await api.get("/api/daily/progress");
-  completedOrders = progress.completed_orders || [];
-  buildOrderPicker();
-  if (progress.complete) {
-    showAllComplete();
-    return;
+    // Prefer the progress endpoint. Older deployments may not have it yet;
+    // in that case probe the existing puzzle endpoint to find the server's
+    // next unlocked order rather than leaving the page blank.
+    let progress;
+    try {
+      progress = await api.get("/api/daily/progress");
+    } catch (progressError) {
+      progress = await discoverDailyProgress();
+    }
+    completedOrders = progress.completed_orders || [];
+    buildOrderPicker();
+    if (progress.complete) {
+      showAllComplete();
+      return;
+    }
+    currentOrder = Number(progress.next_order);
+    if (!PLAYABLE_ORDERS.includes(currentOrder)) throw new Error("The server did not return a valid Daily Challenge size.");
+    saveDailyOrder(currentOrder);
+    await selectOrder(currentOrder);
+  } catch (error) {
+    retry.innerHTML = `${escapeHtml(error.message || "Daily Challenge could not be loaded.")} <button type="button" class="btn-secondary" id="daily-retry" style="margin-left:.5rem;">Retry</button>`;
+    retry.style.display = "block";
+    document.getElementById("daily-retry").addEventListener("click", boot, { once: true });
   }
-  currentOrder = progress.next_order;
-  saveDailyOrder(currentOrder);
-  selectOrder(currentOrder);
+}
+
+async function discoverDailyProgress() {
+  for (const order of PLAYABLE_ORDERS) {
+    try {
+      await api.get(`/api/daily/${order}`);
+      return { completed_orders: [], next_order: order, complete: false };
+    } catch (error) {
+      // A locked order means the server expects a later order. Continue
+      // probing; any other error is likely an outage/authentication issue.
+      if (/before playing another size|complete every Daily Challenge/i.test(error.message)) continue;
+      throw error;
+    }
+  }
+  return { completed_orders: PLAYABLE_ORDERS, next_order: null, complete: true };
 }
 
 function showAllComplete() {
@@ -226,7 +255,9 @@ async function selectOrder(order, { advance = false } = {}) {
 
   renderBuild();
   renderSumLabels();
-  loadDailyLeaderboard(order);
+  loadDailyLeaderboard(order).catch((error) => {
+    document.getElementById("daily-board-wrap").innerHTML = `<div class="empty-state">Today's fastest solves could not be loaded: ${escapeHtml(error.message)}</div>`;
+  });
   updateNextButton();
 }
 
