@@ -39,7 +39,16 @@ function formatTime(totalSeconds) {
 }
 
 function formatDate(iso) {
-  const d = new Date(iso.replace(" ", "T") + "Z");
+  if (iso === null || iso === undefined || iso === "") return "—";
+  let normalized = String(iso).trim().replace(" ", "T");
+  // PostgreSQL text timestamps may include microseconds and a short UTC
+  // offset (for example, 2026-11-04 10:15:30.123456+00). JavaScript's
+  // Date parser expects milliseconds and an ISO offset such as +00:00.
+  normalized = normalized.replace(/\.(\d{3})\d+(?=(?:Z|[+-]\d{2}(?::?\d{2})?)?$)/i, ".$1");
+  normalized = normalized.replace(/([+-]\d{2})$/, "$1:00");
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)) normalized += "Z";
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
