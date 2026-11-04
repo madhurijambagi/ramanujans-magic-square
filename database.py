@@ -44,6 +44,10 @@ class PgCursor:
     def fetchall(self):
         return [self._row(value) for value in self._cursor.fetchall()]
 
+    def __iter__(self):
+        """Match sqlite cursor iteration for shared query code."""
+        return iter(self.fetchall())
+
 
 class PgConnection:
     def __init__(self, connection):
